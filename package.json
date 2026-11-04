@@ -1,0 +1,22 @@
+{
+  "name": "dsh-cookie-guard",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "DSH Desktop 的 dsh-auth cookie 堆积防护：启动前体检 + 超阈值清理 + 自动备份",
+  "keywords": ["dsh", "deepseek-harness", "cookie", "http-431", "electron"],
+  "engines": {
+    "node": ">=22.5"
+  },
+  "bin": {
+    "dsh-cookie-guard": "./scripts/clean.mjs"
+  },
+  "scripts": {
+    "test": "node test/selftest.mjs && node test/clean.test.mjs && node test/prelaunch.test.mjs",
+    "check": "node lib/probe.mjs --json",
+    "clean": "node scripts/clean.mjs --dry-run",
+    "clean:force": "node scripts/clean.mjs --force",
+    "prelaunch": "node scripts/prelaunch.mjs"
+  },
+  "license": "MIT"
+}

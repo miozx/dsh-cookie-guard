@@ -1,0 +1,12 @@
+# 统一换行符，避免 Windows 上 git 自作聪明地改写
+* text=auto eol=lf
+*.cmd text eol=crlf
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+*.md  text eol=lf
+*.mjs text eol=lf
+*.js  text eol=lf
+*.json text eol=lf
+*.yml text eol=lf
+*.png binary
+*.db binary
