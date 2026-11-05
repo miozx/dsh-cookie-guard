@@ -18,7 +18,8 @@ if errorlevel 1 (
 
 echo [%DATE% %TIME%] node resolved:>>"%LOG%"
 where node >>"%LOG%" 2>&1
-node "%PROJ%\scripts\prelaunch.mjs" --threshold 40 --keep 1 >>"%LOG%" 2>&1
+rem threshold 1 = clean on every launch, keep only the newest cookie
+node "%PROJ%\scripts\prelaunch.mjs" --threshold 1 --keep 1 >>"%LOG%" 2>&1
 echo [%DATE% %TIME%] prelaunch exit=%ERRORLEVEL%>>"%LOG%"
 
 :launch

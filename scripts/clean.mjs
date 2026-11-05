@@ -22,7 +22,7 @@
  *   node scripts/clean.mjs --threshold=40  # 超过多少条才动手（默认 40）
  */
 
-import { copyFileSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, unlinkSync, writeFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { homedir } from 'node:os'
 import { fileURLToPath } from 'node:url'
@@ -113,6 +113,12 @@ if (!force && before < threshold) {
   finish({ status: 'skipped', before, total, kept: before, removed: 0 })
 }
 
+const toDelete = Math.max(0, before - keep)
+if (toDelete === 0) {
+  log('没有需要删除的条目。')
+  finish({ status: 'nothing-to-do', before, total, kept: before, removed: 0 })
+}
+
 /* ---------------- 备份 ---------------- */
 let backupPath = null
 if (!dryRun) {
@@ -122,6 +128,7 @@ if (!dryRun) {
   try {
     copyFileSync(cookiesPath, backupPath)
     log('备份完成:', backupPath, `(${statSync(backupPath).size} B)`)
+    pruneBackups()
   } catch (err) {
     log('备份失败，终止（不冒险）:', String(err?.message ?? err))
     process.exit(5)
@@ -129,12 +136,6 @@ if (!dryRun) {
 }
 
 /* ---------------- 删除 ---------------- */
-const toDelete = Math.max(0, before - keep)
-if (toDelete === 0) {
-  log('没有需要删除的条目。')
-  finish({ status: 'nothing-to-do', before, total, kept: before, removed: 0 })
-}
-
 if (dryRun) {
   log(`[dry-run] 将删除 ${toDelete} 条，保留最新 ${keep} 条。未做任何修改。`)
   finish({ status: 'dry-run', before, total, kept: keep, removed: toDelete, backup: null })
@@ -189,4 +190,17 @@ function finish(rec) {
 
 function safeRead(p) {
   try { return JSON.parse(readFileSync(p, 'utf8')).history ?? [] } catch { return [] }
+}
+
+/** 备份只保留最近 N 份（默认 20），避免每次启动都清时把磁盘堆满 */
+function pruneBackups(keepFiles = Number(process.env.PURRGE_GUARD_BACKUPS || 20)) {
+  try {
+    const files = readdirSync(BACKUP_DIR)
+      .filter(f => f.startsWith('cookies-') && f.endsWith('.db'))
+      .map(f => ({ f, t: statSync(join(BACKUP_DIR, f)).mtimeMs }))
+      .sort((a, b) => b.t - a.t)
+    for (const { f } of files.slice(keepFiles)) {
+      try { unlinkSync(join(BACKUP_DIR, f)) } catch {}
+    }
+  } catch { /* 清理备份失败不影响主流程 */ }
 }
