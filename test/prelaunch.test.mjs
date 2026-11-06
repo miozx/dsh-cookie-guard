@@ -4,7 +4,7 @@
  */
 import { execFileSync } from 'node:child_process'
 import { DatabaseSync } from 'node:sqlite'
-import { mkdirSync, mkdtempSync, readdirSync, rmSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { tmpdir } from 'node:os'
 import { fileURLToPath } from 'node:url'
@@ -48,7 +48,7 @@ console.log('\n[1] 3 条，低于阈值 → 不清理、退出码 0')
   const s = sandbox(3)
   const out = run(s, ['--threshold', '40'])
   check('提示正常，直接启动', /正常，直接启动/.test(out), out.trim())
-  check('没有生成备份', !(() => { try { return readdirSync(join(s.dshHome, 'cookie-guard', 'backup')).length > 0 } catch { return false } })())
+  check('没有生成备份', !existsSync(join(s.dshHome, 'cookie-guard', 'backup')))
   rmSync(s.root, { recursive: true, force: true })
 }
 
@@ -61,8 +61,7 @@ console.log('\n[2] 100 条，超阈值 → 自动清理到 1 条')
   const left = db.prepare("SELECT COUNT(*) c FROM cookies WHERE name LIKE 'dsh-auth-%'").get().c
   db.close()
   check('清理后只剩 1 条', left === 1, left)
-  const b = readdirSync(join(s.dshHome, 'cookie-guard', 'backup'))
-  check('生成了备份', b.length === 1, JSON.stringify(b))
+  check('仍然不生成备份', !existsSync(join(s.dshHome, 'cookie-guard', 'backup')))
   rmSync(s.root, { recursive: true, force: true })
 }
 

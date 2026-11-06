@@ -1,9 +1,9 @@
 {
   "name": "dsh-cookie-guard",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
-  "description": "DSH Desktop 的 dsh-auth cookie 堆积防护：启动前体检 + 超阈值清理 + 自动备份",
+  "description": "DSH Desktop 的 dsh-auth cookie 堆积防护：启动前体检 + 超阈值清理 + 只读面板",
   "keywords": ["dsh", "deepseek-harness", "cookie", "http-431", "electron"],
   "engines": {
     "node": ">=22.5"

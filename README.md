@@ -5,7 +5,7 @@ DSH Desktop（DeepSeek Harness）启动失败的常见元凶之一：**`dsh-auth
 本项目只做三件事，并且都可审计、可回滚：
 
 1. **体检**（任意时刻，只读）：数一数 `Cookies` 库里有多少条 `dsh-auth-*`；
-2. **清理**（只在 DSH 关着的时候）：删掉多余的，**只保留最新 1 条**，清理前**自动备份**整个 `Cookies`；
+2. **清理**（只在 DSH 关着的时候）：删掉多余的，**只保留最新 1 条**；
 3. **启动器**（可选）：双击先体检 → 超标就先清 → 再拉起 DSH，让"清理"永远发生在文件没被锁的时候。
 
 > 为什么不能"边跑边清"：`Network\Cookies` 被 Electron 独占（实测 `Copy-Item` 与只读打开都会 `EBUSY`）。任何声称能在运行中清理的实现都值得怀疑。
@@ -42,7 +42,7 @@ node scripts/clean.mjs              # 低于阈值(40)会跳过；超了才动�
 node scripts/clean.mjs --force      # 无视阈值，强制清理
 ```
 
-- 清理前备份到 `$DSH_HOME/cookie-guard/backup/cookies-<时间戳>.db`（默认 `DSH_HOME` = `C:\Users\<你>\.dsh`）；
+- **不做备份**：这些 cookie 是每次启动现签的本地握手票（只含端口 + 签发时间 + 签名，30 天过期），旧票对应的是已经消失的端口，还原备份挽回不了任何东西；删掉的条数照样记进报告，够追溯了；
 - 只删 `host_key ∈ {127.0.0.1, localhost, [::1]}` 且 `name LIKE 'dsh-auth-%'` 的行，**别的站点 cookie 一条不动**；
 - 每次结果写入 `cookie-guard/last-report.json`（保留最近 50 条）。
 
@@ -56,7 +56,7 @@ node scripts/clean.mjs --force      # 无视阈值，强制清理
 node scripts/panel-serve.mjs        # → http://127.0.0.1:47823/cookie-guard/
 ```
 
-一个本地网页：上次启动前后的 cookie 条数、累计清理次数、备份占用、最近记录。
+一个本地网页：上次启动前后的 cookie 条数、累计清理次数、保留策略、最近记录。
 
 它读的是 `cookie-guard/last-report.json`（启动前体检写的），所以**不需要 DSH 关着**也能看，
 而且数字来源可追溯——`launcher.log` 里能看到同一批数字。
@@ -86,7 +86,7 @@ prelaunch.mjs     --threshold --keep --dry-run
 probe.mjs         --json
 ```
 
-退出码：`0` 正常 / `3` 文件被占用 / `4` 备份失败（已中止，未删除任何东西）。
+退出码：`0` 正常 / `3` 文件被占用 / `4` 打开或读取失败。
 
 ## 测试
 
@@ -99,7 +99,7 @@ npm test        # 三套：自检、clean 端到端、prelaunch 端到端
 ## 安全边界
 
 - 只读打开时不带 `readOnly` 会加锁 → 代码里一律用 `{ readOnly: true }`；
-- 备份失败 → 直接中止，不删；
+- 不备份、不联网、不写注册表 —— 删掉的条数与耗时都记进 `last-report.json`；
 - 不联网、不写注册表、不改 DSH 文件、不留后台进程；
 - `test/journal-sample.bin`（含真实 JWT 的样本）已从仓库移除，别把会话日志提交上来。
 
@@ -109,7 +109,7 @@ npm test        # 三套：自检、clean 端到端、prelaunch 端到端
 
 ## 路线图
 
-- [x] 只读探针 + 清理 + 备份 + 启动器
+- [x] 只读探针 + 清理 + 启动器
 - [ ] DSH 插件形态（`cordis.patch.yml` + `lib/index.js`），在 Web UI 里显示当前 cookie 数与阈值
 - [ ] 从 `Cookies-journal` 恢复统计（不依赖 DSH 关闭）
 - [ ] macOS / Linux 路径适配

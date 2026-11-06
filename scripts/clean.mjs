@@ -7,12 +7,17 @@
  * 都持有独占锁（实测 EBUSY，甚至连 FileShare.ReadWrite 都拒绝），
  * 所以任何"边跑边清"的方案在这个版本上都不成立。
  *
+ * 为什么**不备份**：
+ *   这些 cookie 是每次启动现签的本地握手票（只含端口 + 签发时间 + 签名，
+ *   30 天过期），下次启动会重新签发一张，旧票对应的是已经消失的端口。
+ *   所以"还原备份"挽回不了任何东西；留备份只是多一份没人会看的副本，
+ *   外加"备份失败就中止"这个假失败点。删掉的条数照样记进报告，够追溯了。
+ *
  * 安全原则
- *  1. 先备份（整库复制到 cookie-guard/backup/），备份失败就中止；
- *  2. 只删 `host_key ∈ {127.0.0.1, localhost}` 且 `name LIKE 'dsh-auth-%'` 的行；
- *  3. 默认保留最新的 1 条（避免下次启动直接要求重新登录）；
- *  4. 删完立刻复查条数，并把报告写到 cookie-guard/last-report.json；
- *  5. 支持 --dry-run，什么都不改。
+ *  1. 只删 `host_key ∈ {127.0.0.1, localhost, [::1]}` 且 `name LIKE 'dsh-auth-%'` 的行；
+ *  2. 默认保留最新的 1 条；
+ *  3. 删完立刻复查条数，并把报告写到 cookie-guard/last-report.json；
+ *  4. 支持 --dry-run，什么都不改。
  *
  * 用法
  *   node scripts/clean.mjs                 # 按阈值自动判断
@@ -22,14 +27,12 @@
  *   node scripts/clean.mjs --threshold=40  # 超过多少条才动手（默认 40）
  */
 
-import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, unlinkSync, writeFileSync } from 'node:fs'
-import { join, dirname } from 'node:path'
+import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { homedir } from 'node:os'
-import { fileURLToPath } from 'node:url'
 
 const HOME = process.env.DSH_HOME || join(homedir(), '.dsh')
 const STATE_DIR = join(HOME, 'cookie-guard')
-const BACKUP_DIR = join(STATE_DIR, 'backup')
 const REPORT = join(STATE_DIR, 'last-report.json')
 
 const AUTH_HOSTS = "('127.0.0.1', 'localhost', '[::1]')"
@@ -110,35 +113,19 @@ if (before > 0) log('最早/最新 :', oldestGuard(), '/', newestGuard())
 
 if (!force && before < threshold) {
   log(`低于阈值 ${threshold}，不处理。`)
-  finish({ status: 'skipped', before, total, kept: before, removed: 0 })
+  finish({ status: 'skipped', before, total, kept: before, removed: 0, keep, threshold, source: 'clean.mjs', cookiesPath })
 }
 
 const toDelete = Math.max(0, before - keep)
 if (toDelete === 0) {
   log('没有需要删除的条目。')
-  finish({ status: 'nothing-to-do', before, total, kept: before, removed: 0 })
-}
-
-/* ---------------- 备份 ---------------- */
-let backupPath = null
-if (!dryRun) {
-  mkdirSync(BACKUP_DIR, { recursive: true })
-  const stamp = new Date().toISOString().replace(/[:.]/g, '-')
-  backupPath = join(BACKUP_DIR, `cookies-${stamp}.db`)
-  try {
-    copyFileSync(cookiesPath, backupPath)
-    log('备份完成:', backupPath, `(${statSync(backupPath).size} B)`)
-    pruneBackups()
-  } catch (err) {
-    log('备份失败，终止（不冒险）:', String(err?.message ?? err))
-    process.exit(5)
-  }
+  finish({ status: 'nothing-to-do', before, total, kept: before, removed: 0, keep, threshold, source: 'clean.mjs', cookiesPath })
 }
 
 /* ---------------- 删除 ---------------- */
 if (dryRun) {
   log(`[dry-run] 将删除 ${toDelete} 条，保留最新 ${keep} 条。未做任何修改。`)
-  finish({ status: 'dry-run', before, total, kept: keep, removed: toDelete, backup: null })
+  finish({ status: 'dry-run', before, total, kept: before, removed: toDelete, keep, threshold, source: 'clean.mjs', cookiesPath })
 }
 
 /* 保留最新 keep 条：按 creation_utc 倒序，跳过前 keep 条。
@@ -164,7 +151,6 @@ try {
   }
 } catch (err) {
   log('删除失败:', String(err?.message ?? err))
-  log('备份仍在:', backupPath)
   process.exit(6)
 }
 
@@ -172,7 +158,7 @@ try {
 const after = countGuard()
 log('清理后 dsh-auth:', after, '（原 ', before, '）')
 
-finish({ status: 'cleaned', before, total, kept: after, removed, backup: backupPath, afterBytes: statSync(cookiesPath).size, keep, threshold, source: 'clean.mjs', cookiesPath })
+finish({ status: 'cleaned', before, total, kept: after, removed, afterBytes: statSync(cookiesPath).size, keep, threshold, source: 'clean.mjs', cookiesPath })
 
 /* ---------------- 收尾 ---------------- */
 function finish(rec) {
@@ -190,17 +176,4 @@ function finish(rec) {
 
 function safeRead(p) {
   try { return JSON.parse(readFileSync(p, 'utf8')).history ?? [] } catch { return [] }
-}
-
-/** 备份只保留最近 N 份（默认 20），避免每次启动都清时把磁盘堆满 */
-function pruneBackups(keepFiles = Number(process.env.PURRGE_GUARD_BACKUPS || 20)) {
-  try {
-    const files = readdirSync(BACKUP_DIR)
-      .filter(f => f.startsWith('cookies-') && f.endsWith('.db'))
-      .map(f => ({ f, t: statSync(join(BACKUP_DIR, f)).mtimeMs }))
-      .sort((a, b) => b.t - a.t)
-    for (const { f } of files.slice(keepFiles)) {
-      try { unlinkSync(join(BACKUP_DIR, f)) } catch {}
-    }
-  } catch { /* 清理备份失败不影响主流程 */ }
 }

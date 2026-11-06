@@ -55,7 +55,7 @@ try {
     ok('report.empty = true', j.report && j.report.empty === true)
     ok('report.last = null', j.report.last === null)
     ok('history 为空数组', Array.isArray(j.report.history) && j.report.history.length === 0)
-    ok('backups.count = 0', j.backups && j.backups.count === 0)
+    ok('不再暴露 backups 字段', j.backups === undefined, JSON.stringify(j.backups))
     ok('报告路径用的是临时目录', String(j.report.path).startsWith(tmp), j.report.path)
     hits.push('empty')
   }
@@ -66,7 +66,7 @@ try {
       ts: new Date('2026-11-06T14:00:00Z').toISOString(),
       status: 'cleaned', source: 'test',
       before: 8, after: 1, removed: 7, keep: 1, threshold: 1,
-      durationMs: 240, backup: 'C:\\fake\\cookies.db',
+      durationMs: 240,
     })
     const j = await (await get(BASE_PATH + '/api/status')).json()
     ok('last.before = 8', j.report.last.before === 8, JSON.stringify(j.report.last && j.report.last.before))
@@ -86,7 +86,7 @@ try {
     })
     const j = await (await get(BASE_PATH + '/api/status')).json()
     ok('老格式 kept 被映射成 after', j.report.last.after === 1, String(j.report.last.after))
-    ok('afterBytes 被映射成 backupBytes', j.report.last.backupBytes === 20480)
+    ok('老字段 backupBytes 已被丢弃', j.report.last.backupBytes === undefined || j.report.last.backupBytes === null, String(j.report.last.backupBytes))
     ok('history 累计 2 条', j.report.history.length === 2)
     ok('history 顺序是时间正序', j.report.history[0].removed === 7 && j.report.history[1].removed === 2)
     hits.push('compat')

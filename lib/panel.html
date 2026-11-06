@@ -105,7 +105,6 @@
   <div class="grid">
     <div class="card"><div class="k">累计清理次数</div><div class="v" id="cleanCount">—</div></div>
     <div class="card"><div class="k">累计删除 cookie</div><div class="v" id="removedTotal">—</div></div>
-    <div class="card"><div class="k">备份占用</div><div class="v" id="backupSize">—</div></div>
     <div class="card"><div class="k">当前阈值 / 保留</div><div class="v" id="policy">—</div></div>
   </div>
 
@@ -113,10 +112,10 @@
     <h2>最近记录</h2>
     <table>
       <thead>
-        <tr><th>时间</th><th>结果</th><th>清理前</th><th>清理后</th><th>删除</th><th>备份</th></tr>
+        <tr><th>时间</th><th>结果</th><th>清理前</th><th>清理后</th><th>删除</th></tr>
       </thead>
       <tbody id="rows">
-        <tr><td colspan="6" class="empty">还没有任何记录</td></tr>
+        <tr><td colspan="5" class="empty">还没有任何记录</td></tr>
       </tbody>
     </table>
   </div>
@@ -133,7 +132,6 @@
   <footer>
     <div><span class="dot" id="dot"></span><span id="conn">正在读取状态…</span></div>
     <div>报告文件：<code id="reportPath">—</code></div>
-    <div>备份目录：<code id="backupDir">—</code></div>
   </footer>
 </div>
 
@@ -144,13 +142,6 @@
   var timer = null;
 
   function $(id) { return document.getElementById(id); }
-
-  function fmtBytes(n) {
-    if (!Number.isFinite(n)) return '—';
-    if (n < 1024) return n + ' B';
-    if (n < 1024 * 1024) return (n / 1024).toFixed(0) + ' KB';
-    return (n / 1024 / 1024).toFixed(1) + ' MB';
-  }
 
   function statusTag(status) {
     if (status === 'cleaned') return { text: '已清理', cls: 'ok' };
@@ -165,10 +156,8 @@
     var rep = data.report || {};
     var last = rep.last || null;
     var history = Array.isArray(rep.history) ? rep.history : [];
-    var backups = data.backups || {};
 
     $('reportPath').textContent = rep.path || '—';
-    $('backupDir').textContent = backups.dir || '—';
 
     if (!last) {
       $('before').textContent = '—';
@@ -176,7 +165,7 @@
       $('verdict').textContent = '还没有数据';
       $('verdict').className = 'tag';
       $('when').textContent = '还没有报告 —— 用桌面上的「DSH（带体检启动）」启动一次就会有了。';
-      $('rows').innerHTML = '<tr><td colspan="6" class="empty">还没有任何记录</td></tr>';
+      $('rows').innerHTML = '<tr><td colspan="5" class="empty">还没有任何记录</td></tr>';
     } else {
       $('before').textContent = (last.before === null || last.before === undefined) ? '?' : last.before;
       $('after').textContent = (last.after === null || last.after === undefined) ? '?' : last.after;
@@ -195,18 +184,15 @@
           '<td class="n">' + (e.before ?? '—') + '</td>' +
           '<td class="n">' + (e.after ?? '—') + '</td>' +
           '<td class="n">' + (e.removed ?? '—') + '</td>' +
-          '<td class="n">' + (e.backup ? '有' : '—') + '</td>' +
           '</tr>';
       }).join('');
-      $('rows').innerHTML = rows || '<tr><td colspan="6" class="empty">还没有任何记录</td></tr>';
+      $('rows').innerHTML = rows || '<tr><td colspan="5" class="empty">还没有任何记录</td></tr>';
     }
 
     var cleaned = history.filter(function (e) { return e.status === 'cleaned' });
     $('cleanCount').textContent = cleaned.length;
     var removedTotal = cleaned.reduce(function (a, e) { return a + (e.removed || 0); }, 0);
     $('removedTotal').textContent = removedTotal;
-    $('backupSize').innerHTML = fmtBytes(backups.bytes) +
-      ' <small>' + (backups.count || 0) + ' 份</small>';
     $('policy').innerHTML = (last && last.threshold != null ? last.threshold : '—') +
       ' <small>/ 保留 ' + (last && last.keep != null ? last.keep : 1) + '</small>';
 

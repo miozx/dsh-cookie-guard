@@ -6,7 +6,7 @@
  */
 import { execFileSync } from 'node:child_process'
 import { DatabaseSync } from 'node:sqlite'
-import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { tmpdir } from 'node:os'
 import { fileURLToPath } from 'node:url'
@@ -78,11 +78,12 @@ const names = () => {
 }
 check('保留的是最新那条', count("name = 'dsh-auth-newest'") === 1, 'survivors=' + JSON.stringify(names()))
 check('无关 cookie 未受影响（2 条）', count("name NOT LIKE 'dsh-auth-%'") === 2, count("name NOT LIKE 'dsh-auth-%'"))
-const backups = readdirSync(join(dshHome, 'cookie-guard', 'backup'))
-check('生成了 1 份备份', backups.length === 1, JSON.stringify(backups))
+const backupsDir = join(dshHome, 'cookie-guard', 'backup')
+check('不再产生备份目录', !existsSync(backupsDir), 'backup dir exists')
 const report = JSON.parse(readFileSync(join(dshHome, 'cookie-guard', 'last-report.json'), 'utf8'))
 check('报告 status = cleaned', report.last.status === 'cleaned', report.last.status)
 check('报告记录了 removed = 4', report.last.removed === 4, report.last.removed)
+check('报告不再含 backup 字段', report.last.backup === undefined, JSON.stringify(report.last))
 
 /* ---------- 场景 2：低于阈值 → 跳过 ---------- */
 console.log('\n[2] 3 条 dsh-auth，默认阈值 40 → 应跳过')
@@ -101,7 +102,7 @@ buildDb(Array.from({ length: 10 }, (_, i) => ({ c: 13370000000000100 + i, h: '12
 const out3 = runClean(['--force', '--dry-run'])
 check('提示 dry-run', /\[dry-run\]/.test(out3), out3.trim().split('\n').pop())
 check('仍是 10 条', count("name LIKE 'dsh-auth-%'") === 10, count("name LIKE 'dsh-auth-%'"))
-check('dry-run 不产生备份', readdirSync(join(dshHome, 'cookie-guard', 'backup')).length === 1, 'backup grew')
+check('dry-run 不产生任何目录', !existsSync(backupsDir), 'backup dir created')
 
 /* ---------- 场景 4：--keep=2 ---------- */
 console.log('\n[4] --keep=2')
