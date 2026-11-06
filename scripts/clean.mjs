@@ -172,7 +172,7 @@ try {
 const after = countGuard()
 log('清理后 dsh-auth:', after, '（原 ', before, '）')
 
-finish({ status: 'cleaned', before, total, kept: after, removed, backup: backupPath, afterBytes: statSync(cookiesPath).size })
+finish({ status: 'cleaned', before, total, kept: after, removed, backup: backupPath, afterBytes: statSync(cookiesPath).size, keep, threshold, source: 'clean.mjs', cookiesPath })
 
 /* ---------------- 收尾 ---------------- */
 function finish(rec) {

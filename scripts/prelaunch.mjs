@@ -9,6 +9,7 @@ import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { probe } from '../lib/probe.mjs'
+import { appendReport } from '../lib/report.mjs'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const cleanJs = join(here, 'clean.mjs')
@@ -25,6 +26,7 @@ const keep = Number(arg('keep', 1))
 const dryRun = arg('dry-run', false) === true
 
 const line = '─'.repeat(56)
+const started = Date.now()
 console.log(line)
 console.log('DSH Cookie Guard · 启动前体检')
 console.log(line)
@@ -34,6 +36,10 @@ try {
   result = await probe()
 } catch (err) {
   console.log('  体检失败（不影响启动）:', err.message)
+  appendReport({
+    ts: new Date().toISOString(), status: 'error', source: 'prelaunch',
+    keep, threshold, durationMs: Date.now() - started,
+  })
   process.exit(0)
 }
 
@@ -43,6 +49,13 @@ if (!result.ok) {
     : `无法读取：${result.reason ?? result.error ?? 'unknown'}（不影响启动）`
   console.log('  ' + lockNote)
   console.log(line)
+  appendReport({
+    ts: new Date().toISOString(),
+    status: result.reason === 'locked' ? 'locked' : 'error',
+    source: 'prelaunch',
+    keep, threshold, durationMs: Date.now() - started,
+    cookiesPath: result.path ?? null,
+  })
   process.exit(0)
 }
 
@@ -54,6 +67,12 @@ console.log(`  阈值         : ${threshold}`)
 if (result.guard <= threshold) {
   console.log('  结论         : 正常，直接启动')
   console.log(line)
+  appendReport({
+    ts: new Date().toISOString(), status: 'skipped', source: 'prelaunch',
+    before: result.guard, after: result.guard, removed: 0,
+    keep, threshold, durationMs: Date.now() - started,
+    cookiesPath: result.path ?? null,
+  })
   process.exit(0)
 }
 

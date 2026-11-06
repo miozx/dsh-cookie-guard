@@ -50,6 +50,27 @@ node scripts/clean.mjs --force      # 无视阈值，强制清理
 
 `launcher/dsh-launch.cmd`：体检 → 超标自动清 → 启动 DSH。第一次用请确认里面的 `DSH_EXE` 路径对，然后在桌面建个快捷方式，以后就双击它。
 
+### 4. 看面板（只读）
+
+```bash
+node scripts/panel-serve.mjs        # → http://127.0.0.1:47823/cookie-guard/
+```
+
+一个本地网页：上次启动前后的 cookie 条数、累计清理次数、备份占用、最近记录。
+
+它读的是 `cookie-guard/last-report.json`（启动前体检写的），所以**不需要 DSH 关着**也能看，
+而且数字来源可追溯——`launcher.log` 里能看到同一批数字。
+
+三个接口（挂进 DSH 后路径不变）：
+
+| 接口 | 方法 | 说明 |
+|---|---|---|
+| `/cookie-guard/` | GET | 面板页面 |
+| `/cookie-guard/api/status` | GET | 只读状态 JSON |
+| `/cookie-guard/api/clean` | POST | **尚未实现**，现在固定返回 `501 not-implemented` |
+
+> 「清理并重启」是第 3 步，明确不做假成功：没实现就返回 501，页面上的按钮也是灰的。
+
 ## 全部参数
 
 ```

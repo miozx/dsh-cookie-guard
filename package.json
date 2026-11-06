@@ -11,12 +11,30 @@
   "bin": {
     "dsh-cookie-guard": "./scripts/clean.mjs"
   },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "compatibility": {
+      "dshReleases": {
+        "0.2.0-rc.5": "compatible",
+        "0.2.1": "compatible"
+      }
+    }
+  },
+  "files": [
+    "lib/",
+    "scripts/",
+    "cordis.patch.yml",
+    "README.md"
+  ],
   "scripts": {
-    "test": "node test/selftest.mjs && node test/clean.test.mjs && node test/prelaunch.test.mjs",
+    "test": "node test/selftest.mjs && node test/clean.test.mjs && node test/prelaunch.test.mjs && node test/panel.test.mjs",
     "check": "node lib/probe.mjs --json",
     "clean": "node scripts/clean.mjs --dry-run",
     "clean:force": "node scripts/clean.mjs --force",
-    "prelaunch": "node scripts/prelaunch.mjs"
+    "prelaunch": "node scripts/prelaunch.mjs",
+    "panel": "node scripts/panel-serve.mjs"
   },
   "license": "MIT"
 }

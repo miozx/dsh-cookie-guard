@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DSH Cookie Guard</title>
+<style>
+  :root {
+    --bg: #f6f7f9;
+    --card: #ffffff;
+    --line: #e6e8ec;
+    --text: #1f2328;
+    --muted: #6b7280;
+    --ok: #16a34a;
+    --warn: #d97706;
+    --bad: #dc2626;
+    --accent: #2563eb;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 28px 20px 48px;
+    background: var(--bg); color: var(--text);
+    font: 15px/1.55 system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; }
+  header { display: flex; align-items: baseline; gap: 10px; margin-bottom: 6px; }
+  h1 { font-size: 20px; margin: 0; font-weight: 650; }
+  .ver { color: var(--muted); font-size: 12px; }
+  .sub { color: var(--muted); font-size: 13px; margin-bottom: 22px; }
+
+  .hero {
+    background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+    padding: 22px 24px; margin-bottom: 16px;
+  }
+  .hero .label { color: var(--muted); font-size: 13px; margin-bottom: 10px; }
+  .big { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .num { font-size: 46px; font-weight: 700; line-height: 1; letter-spacing: -1px; }
+  .num.small { font-size: 36px; }
+  .arrow { color: var(--muted); font-size: 26px; }
+  .tag {
+    font-size: 12px; padding: 3px 9px; border-radius: 999px;
+    background: #eef2ff; color: var(--accent); font-weight: 600;
+  }
+  .tag.ok { background: #ecfdf5; color: var(--ok); }
+  .tag.warn { background: #fffbeb; color: var(--warn); }
+  .tag.bad { background: #fef2f2; color: var(--bad); }
+  .hero .when { color: var(--muted); font-size: 13px; margin-top: 12px; }
+
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
+  @media (max-width: 720px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    padding: 14px 16px;
+  }
+  .card .k { color: var(--muted); font-size: 12px; margin-bottom: 6px; }
+  .card .v { font-size: 20px; font-weight: 650; }
+  .card .v small { font-size: 12px; font-weight: 400; color: var(--muted); }
+
+  .panel { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; margin-bottom: 16px; }
+  .panel h2 { font-size: 14px; margin: 0 0 12px; font-weight: 650; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-weight: 500; font-size: 12px; }
+  td.n { font-variant-numeric: tabular-nums; }
+  tr:last-child td { border-bottom: 0; }
+  .empty { color: var(--muted); font-size: 13px; padding: 18px 0; text-align: center; }
+
+  .actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  button {
+    font: inherit; padding: 9px 16px; border-radius: 9px; cursor: pointer;
+    border: 1px solid var(--line); background: #fff; color: var(--text);
+  }
+  button:disabled { cursor: not-allowed; opacity: 1; }
+  button:disabled, button.primary:disabled {
+    background: #eef0f3; border-color: var(--line); color: #9aa1ab;
+  }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .hint { color: var(--muted); font-size: 12px; }
+
+  footer { color: var(--muted); font-size: 12px; line-height: 1.8; }
+  code { background: #eef0f3; padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; background: var(--ok); margin-right: 6px; }
+  .dot.off { background: var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>DSH Cookie Guard</h1>
+    <span class="ver" id="ver">v0.2.0 · 第 1、2 步</span>
+  </header>
+  <div class="sub">只看不改。所有数字都来自启动前体检写下的报告，不是估算。</div>
+
+  <div class="hero" id="hero">
+    <div class="label">上一次启动时的 dsh-auth cookie 条数</div>
+    <div class="big">
+      <span class="num" id="before">—</span>
+      <span class="arrow">→</span>
+      <span class="num small" id="after">—</span>
+      <span class="tag" id="verdict">等待数据</span>
+    </div>
+    <div class="when" id="when">还没有报告，先用「DSH（带体检启动）」启动一次。</div>
+  </div>
+
+  <div class="grid">
+    <div class="card"><div class="k">累计清理次数</div><div class="v" id="cleanCount">—</div></div>
+    <div class="card"><div class="k">累计删除 cookie</div><div class="v" id="removedTotal">—</div></div>
+    <div class="card"><div class="k">备份占用</div><div class="v" id="backupSize">—</div></div>
+    <div class="card"><div class="k">当前阈值 / 保留</div><div class="v" id="policy">—</div></div>
+  </div>
+
+  <div class="panel">
+    <h2>最近记录</h2>
+    <table>
+      <thead>
+        <tr><th>时间</th><th>结果</th><th>清理前</th><th>清理后</th><th>删除</th><th>备份</th></tr>
+      </thead>
+      <tbody id="rows">
+        <tr><td colspan="6" class="empty">还没有任何记录</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="panel">
+    <h2>操作</h2>
+    <div class="actions">
+      <button class="primary" id="cleanBtn" disabled title="第 3 步（清理并重启）还没接上">立即清理并重启</button>
+      <button id="refreshBtn">刷新数据</button>
+      <span class="hint" id="btnHint">第 3 步开发中：现在清理请用桌面快捷方式启动。</span>
+    </div>
+  </div>
+
+  <footer>
+    <div><span class="dot" id="dot"></span><span id="conn">正在读取状态…</span></div>
+    <div>报告文件：<code id="reportPath">—</code></div>
+    <div>备份目录：<code id="backupDir">—</code></div>
+  </footer>
+</div>
+
+<script>
+(function () {
+  var BASE = '/cookie-guard';
+  var STATUS_URL = BASE + '/api/status';
+  var timer = null;
+
+  function $(id) { return document.getElementById(id); }
+
+  function fmtBytes(n) {
+    if (!Number.isFinite(n)) return '—';
+    if (n < 1024) return n + ' B';
+    if (n < 1024 * 1024) return (n / 1024).toFixed(0) + ' KB';
+    return (n / 1024 / 1024).toFixed(1) + ' MB';
+  }
+
+  function statusTag(status) {
+    if (status === 'cleaned') return { text: '已清理', cls: 'ok' };
+    if (status === 'skipped') return { text: '未超阈值', cls: 'ok' };
+    if (status === 'nothing-to-do') return { text: '无需清理', cls: 'ok' };
+    if (status === 'locked') return { text: '被占用已跳过', cls: 'warn' };
+    if (status === 'error') return { text: '出错', cls: 'bad' };
+    return { text: status || '未知', cls: '' };
+  }
+
+  function render(data) {
+    var rep = data.report || {};
+    var last = rep.last || null;
+    var history = Array.isArray(rep.history) ? rep.history : [];
+    var backups = data.backups || {};
+
+    $('reportPath').textContent = rep.path || '—';
+    $('backupDir').textContent = backups.dir || '—';
+
+    if (!last) {
+      $('before').textContent = '—';
+      $('after').textContent = '—';
+      $('verdict').textContent = '还没有数据';
+      $('verdict').className = 'tag';
+      $('when').textContent = '还没有报告 —— 用桌面上的「DSH（带体检启动）」启动一次就会有了。';
+      $('rows').innerHTML = '<tr><td colspan="6" class="empty">还没有任何记录</td></tr>';
+    } else {
+      $('before').textContent = (last.before === null || last.before === undefined) ? '?' : last.before;
+      $('after').textContent = (last.after === null || last.after === undefined) ? '?' : last.after;
+      var t = statusTag(last.status);
+      $('verdict').textContent = t.text;
+      $('verdict').className = 'tag ' + t.cls;
+      $('when').textContent = (last.local || last.ts || '') +
+        (last.removed ? '　删除了 ' + last.removed + ' 条' : '') +
+        (last.durationMs ? '　耗时 ' + last.durationMs + ' ms' : '');
+
+      var rows = history.slice(-12).reverse().map(function (e) {
+        var tt = statusTag(e.status);
+        return '<tr>' +
+          '<td class="n">' + (e.local || e.ts || '') + '</td>' +
+          '<td><span class="tag ' + tt.cls + '">' + tt.text + '</span></td>' +
+          '<td class="n">' + (e.before ?? '—') + '</td>' +
+          '<td class="n">' + (e.after ?? '—') + '</td>' +
+          '<td class="n">' + (e.removed ?? '—') + '</td>' +
+          '<td class="n">' + (e.backup ? '有' : '—') + '</td>' +
+          '</tr>';
+      }).join('');
+      $('rows').innerHTML = rows || '<tr><td colspan="6" class="empty">还没有任何记录</td></tr>';
+    }
+
+    var cleaned = history.filter(function (e) { return e.status === 'cleaned' });
+    $('cleanCount').textContent = cleaned.length;
+    var removedTotal = cleaned.reduce(function (a, e) { return a + (e.removed || 0); }, 0);
+    $('removedTotal').textContent = removedTotal;
+    $('backupSize').innerHTML = fmtBytes(backups.bytes) +
+      ' <small>' + (backups.count || 0) + ' 份</small>';
+    $('policy').innerHTML = (last && last.threshold != null ? last.threshold : '—') +
+      ' <small>/ 保留 ' + (last && last.keep != null ? last.keep : 1) + '</small>';
+
+    $('dot').className = 'dot';
+    $('conn').textContent = '数据来自本地报告文件 · 最后读取 ' + (data.generatedAtLocal || '');
+  }
+
+  function fail(err) {
+    $('dot').className = 'dot off';
+    $('conn').textContent = '读取失败：' + (err && err.message ? err.message : err);
+    $('verdict').textContent = '连不上';
+    $('verdict').className = 'tag bad';
+  }
+
+  function load() {
+    return fetch(STATUS_URL, { cache: 'no-store' })
+      .then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
+      .then(render)
+      .catch(fail);
+  }
+
+  $('refreshBtn').addEventListener('click', load);
+  load();
+  timer = setInterval(load, 5000);
+  window.addEventListener('beforeunload', function () { clearInterval(timer); });
+})();
+</script>
+</body>
+</html>
