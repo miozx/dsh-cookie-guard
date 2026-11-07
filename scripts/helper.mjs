@@ -200,8 +200,14 @@ const crKill = spawnSync('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypas
 })
 log('清理残留子进程:', (crKill.stdout || '').trim() || '(没有残留)')
 
-/* ---------- 5. 重新拉起 ---------- */
+/* ---------- 5. 重新拉起 ----------
+ * 目标：从"点按钮"到"窗口出现"尽量短。上一版会先死等旧实例退出（实测等了 24 秒），
+ * 那个等待是多余的：单实例冲突时新进程会在几十毫秒内 exit 0，直接重试就行。
+ */
 const exeDir = dirname(exe)
+const t0 = Date.now()
+const since = () => ((Date.now() - t0) / 1000).toFixed(1) + 's'
+
 function dshCount() {
   const r = spawnSync('tasklist', ['/FI', 'IMAGENAME eq DeepSeek Harness.exe', '/NH', '/FO', 'CSV'], {
     encoding: 'utf8',
@@ -210,53 +216,52 @@ function dshCount() {
   return ((r.stdout || '').match(/DeepSeek Harness\.exe/gi) || []).length
 }
 
-/**
- * 先等旧实例从进程表里彻底消失。
- * 上一版的教训：刚 taskkill 完，进程还在"正在结束"状态，tasklist 仍能看到它，
- * 于是 [第 1 次检查：DSH 已经在跑了，不用再拉] 直接把启动跳过了 —— 实际什么都没起来。
- */
-let quiet = 0
-while (dshCount() > 0 && quiet < 40) {
-  sleep(500)
-  quiet++
+/** 连续两次都看得到，才算"真的有一个活着的实例"（避免把正在退出的进程当成成功） */
+function stableRunning() {
+  if (dshCount() === 0) return false
+  sleep(1200)
+  return dshCount() > 0
 }
-log(`等待旧实例退净：${(quiet * 0.5).toFixed(1)} 秒后剩 ${dshCount()} 个 DSH 进程`)
 
+// 【关键】必须清掉 ELECTRON_RUN_AS_NODE：
+// helper 本身是被 DSH 用 ELECTRON_RUN_AS_NODE=1 拉起来的（拿 Electron 当 Node 用），
+// 不清的话子进程会继承它，"DeepSeek Harness.exe" 会以 Node 模式启动、无脚本参数即刻退出（exit=0）。
+const childEnv = { ...process.env }
+delete childEnv.ELECTRON_RUN_AS_NODE
+delete childEnv.ELECTRON_NO_ATTACH_CONSOLE
+delete childEnv.ELECTRON_ENABLE_LOGGING
+
+const MAX_ATTEMPTS = 12
+const OBSERVE_MS = 3000
+sleep(300) // 让 taskkill 落到内核，别急着拉
 let launched = false
-for (let attempt = 1; attempt <= 8 && !launched; attempt++) {
-  if (attempt > 1) {
-    log('等 3 秒再试（让单实例锁彻底释放）…')
-    sleep(3000)
-  }
-  log(`第 ${attempt} 次拉起:`, exe, '(cwd=' + exeDir + ')')
+
+for (let attempt = 1; attempt <= MAX_ATTEMPTS && !launched; attempt++) {
+  log(`第 ${attempt} 次拉起 (${since()}):`, exe, '(cwd=' + exeDir + ')')
   let died = null
-  // 【关键】必须清掉 ELECTRON_RUN_AS_NODE：
-  // 这个 helper 本身是被 DSH 用 ELECTRON_RUN_AS_NODE=1 拉起来的（拿 Electron 当 Node 用），
-  // 环境变量会被子进程继承 —— 不清的话 "DeepSeek Harness.exe" 会以 Node 模式启动，
-  // 没有脚本参数就直接退出（exit=0，约 40 毫秒），看起来就是"拉不起来"。
-  const env = { ...process.env }
-  delete env.ELECTRON_RUN_AS_NODE
-  delete env.ELECTRON_NO_ATTACH_CONSOLE
-  delete env.ELECTRON_ENABLE_LOGGING
-  const child = spawn(exe, [], { cwd: exeDir, env, detached: true, stdio: 'ignore' })
+  const child = spawn(exe, [], { cwd: exeDir, env: childEnv, detached: true, stdio: 'ignore' })
   child.on('exit', code => { died = code === null ? -1 : code })
-  // 注意：不能 unref() 后再等 exit —— 这里要留住事件循环才能收到 exit
+  // 不 unref()：要留住事件循环才能收到 exit
   let waited = 0
-  while (waited < 10000 && died === null) { sleep(500); waited += 500 }
+  while (waited < OBSERVE_MS && died === null) { sleep(100); waited += 100 }
 
   if (died === null) {
     launched = true
-    log(`第 ${attempt} 次拉起成功：进程已存活 ${waited} 毫秒（pid=${child.pid}，tasklist 看到 ${dshCount()} 个）`)
-  } else {
-    log(`第 ${attempt} 次拉起失败：${waited} 毫秒内退出，exit=${died}（多半是旧实例的锁还在）`)
+    log(`第 ${attempt} 次拉起成功：存活 ${waited} ms（pid=${child.pid}，tasklist 看到 ${dshCount()} 个，总耗时 ${since()}）`)
+    break
   }
+
+  log(`第 ${attempt} 次拉起失败：${waited} ms 就退出，exit=${died}`)
+  if (died === 0 && attempt >= 3 && stableRunning()) {
+    launched = true
+    log(`检测到已有一个稳定的 DSH 实例（${since()}），视为成功`)
+    break
+  }
+  sleep(700)
 }
 
 if (!launched) {
-  log('ERROR: 拉了 8 次都没起来 —— 请手动双击桌面「DSH（带体检启动）」或直接开 DeepSeek Harness.exe')
-} else if (dshCount() === 0) {
-  log('注意: spawn 报告存活，但 tasklist 里看不到它，可能是进程名不同')
+  log(`ERROR: 拉了 ${MAX_ATTEMPTS} 次都没起来 —— 请手动双击桌面「DSH（带体检启动）」或直接开 DeepSeek Harness.exe`)
 }
-
-log('=== helper done ===')
+log(`=== helper done (${since()}) ===`)
 process.exit(launched ? 0 : 1)
