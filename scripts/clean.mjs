@@ -41,11 +41,20 @@ const AUTH_LIKE = "'dsh-auth-%'"
 /* ---------------- 参数 ---------------- */
 const argv = process.argv.slice(2)
 const has = f => argv.includes(f)
+// 同时支持 `--keep=1` 和 `--keep 1` 两种写法：
+// prelaunch.mjs 转发给我们的是空格形式，早期只认等号形式，导致阈值/保留数被静默忽略、回落到默认值。
 const num = (f, d) => {
   const hit = argv.find(a => a.startsWith(f + '='))
-  if (!hit) return d
-  const v = Number(hit.slice(f.length + 1))
-  return Number.isFinite(v) ? v : d
+  if (hit) {
+    const v = Number(hit.slice(f.length + 1))
+    return Number.isFinite(v) ? v : d
+  }
+  const i = argv.findIndex(a => a === f)
+  if (i !== -1 && i + 1 < argv.length) {
+    const v = Number(argv[i + 1])
+    return Number.isFinite(v) ? v : d
+  }
+  return d
 }
 const dryRun = has('--dry-run')
 const force = has('--force')
