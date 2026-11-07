@@ -123,9 +123,9 @@
   <div class="panel">
     <h2>操作</h2>
     <div class="actions">
-      <button class="primary" id="cleanBtn" disabled title="第 3 步（清理并重启）还没接上">立即清理并重启</button>
+      <button class="primary" id="cleanBtn" title="关闭 DSH → 清理 cookie → 自动重启">立即清理并重启</button>
       <button id="refreshBtn">刷新数据</button>
-      <span class="hint" id="btnHint">第 3 步开发中：现在清理请用桌面快捷方式启动。</span>
+      <span class="hint" id="btnHint">会先把 DSH 关掉再清理（Cookies 被它独占着），然后自动拉起来。</span>
     </div>
   </div>
 
@@ -139,6 +139,7 @@
 (function () {
   var BASE = '/cookie-guard';
   var STATUS_URL = BASE + '/api/status';
+  var CLEAN_URL = BASE + '/api/clean';
   var timer = null;
 
   function $(id) { return document.getElementById(id); }
@@ -218,9 +219,48 @@
   }
 
   $('refreshBtn').addEventListener('click', load);
+  $('cleanBtn').addEventListener('click', cleanNow);
   load();
   timer = setInterval(load, 5000);
   window.addEventListener('beforeunload', function () { clearInterval(timer); });
+
+  function cleanNow() {
+    var btn = $('cleanBtn');
+    var hint = $('btnHint');
+    var ok = window.confirm(
+      '现在会：\n' +
+      '1. 关掉 DSH（当前这个对话窗口会跟着关闭）\n' +
+      '2. 清掉多余的 dsh-auth cookie\n' +
+      '3. 自动重新启动 DSH\n\n' +
+      '如果这会儿正在跑任务，先等它跑完再点。继续吗？'
+    );
+    if (!ok) return;
+
+    btn.disabled = true;
+    hint.textContent = '正在发起…';
+
+    fetch(CLEAN_URL, { method: 'POST', cache: 'no-store' })
+      .then(function (r) { return r.json().then(function (j) { return { status: r.status, body: j }; }); })
+      .then(function (res) {
+        if (res.body.simulated) {
+          hint.textContent = '预览模式：这里不会真的重启（还是从 DSH 里打开才有这个效果）。';
+          btn.disabled = false;
+          return;
+        }
+        if (res.status === 202) {
+          hint.textContent = '已发起：DSH 会在 2～3 秒内关闭，清理后自动重启。这个页面稍后会断开。';
+          $('conn').textContent = '已发起清理，DSH 正在退出…';
+          $('dot').className = 'dot off';
+          return;
+        }
+        hint.textContent = '发起失败：' + (res.body && (res.body.message || res.body.error) || ('HTTP ' + res.status));
+        btn.disabled = false;
+      })
+      .catch(function (err) {
+        hint.textContent = '发起失败：' + (err && err.message ? err.message : err);
+        btn.disabled = false;
+      });
+  }
 })();
 </script>
 </body>

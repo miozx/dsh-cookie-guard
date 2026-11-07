@@ -23,7 +23,11 @@ function ok(name, cond, extra) {
   else { fail += 1; console.log('  [FAIL] ' + name + (extra ? '  -> ' + extra : '')) }
 }
 
-const routes = createRoutes({ base: BASE_PATH })
+const cleanCalls = []
+const routes = createRoutes({
+  base: BASE_PATH,
+  clean: () => { cleanCalls.push(Date.now()); return { started: true, helperPid: 4242, simulated: false } },
+})
 const handler = makeHandler(routes)
 const server = createServer((req, res) => handler(req, res))
 await new Promise(r => server.listen(0, '127.0.0.1', r))
@@ -92,15 +96,20 @@ try {
     hits.push('compat')
   }
 
-  /* 5. 清理接口现在必须是 501（第 3 步没做，不能假装成功） */
+  /* 5. 清理接口：POST → 202 并真的调用了 clean（测试里是桩），GET → 405 */
   {
     const rGet = await get(BASE_PATH + '/api/clean')
     ok('GET /api/clean → 405', rGet.status === 405, 'status=' + rGet.status)
     const rPost = await get(BASE_PATH + '/api/clean', { method: 'POST' })
     const body = await rPost.json()
-    ok('POST /api/clean → 501', rPost.status === 501, 'status=' + rPost.status)
-    ok('501 带 not-implemented', body.error === 'not-implemented')
-    hits.push('clean501')
+    ok('POST /api/clean → 202', rPost.status === 202, 'status=' + rPost.status)
+    ok('返回 started = true', body.started === true, JSON.stringify(body))
+    ok('返回 helperPid', body.helperPid === 4242, String(body.helperPid))
+    ok('clean() 被调用了一次', cleanCalls.length === 1, 'calls=' + cleanCalls.length)
+    const again = await get(BASE_PATH + '/api/clean', { method: 'POST' })
+    ok('两秒内连点 → 429', again.status === 429, 'status=' + again.status)
+    ok('连点没有再触发 clean()', cleanCalls.length === 1, 'calls=' + cleanCalls.length)
+    hits.push('clean202')
   }
 
   /* 6. 越界路径不能被误认 */

@@ -61,7 +61,33 @@ node scripts/panel-serve.mjs        # → http://127.0.0.1:47823/cookie-guard/
 它读的是 `cookie-guard/last-report.json`（启动前体检写的），所以**不需要 DSH 关着**也能看，
 而且数字来源可追溯——`launcher.log` 里能看到同一批数字。
 
-三个接口（挂进 DSH 后路径不变）：
+### 5. 面板上的「立即清理并重启」（第 3 步）
+
+点一下会发生什么：
+
+1. 页面先确认（会告诉你"当前对话窗口会跟着关闭"）；
+2. `POST /cookie-guard/api/clean` 立刻回 **202**，同时拉一个**脱离进程** `scripts/helper.mjs`；
+3. helper 查出 DSH 的进程链，**只按 PID** 逐个终止（绝不用 `taskkill /im` 按名字杀）；
+4. 等 `Cookies` 的锁真正放掉，再跑 `clean.mjs --force --keep 1`；
+5. 最后用启动器把 DSH 拉起来。
+
+安全细节：
+
+- helper **不能用 `taskkill /T`** —— 它自己是 DSH 的子孙，`/T` 会把它一起杀掉。所以它自己算子孙清单、逐个 `/PID` 杀；
+- 只杀同名 exe（`DeepSeek Harness.exe`）的进程，输入法、终端这些子进程一律跳过；
+- 30 秒还没退干净就**放弃清理**（exit 3），不硬抢锁；两秒内连点返回 **429**；
+- 预览模式（`node scripts/panel-serve.mjs`，不在 DSH 里）点按钮只会得到 `simulated: true`，不会真重启。
+
+动手前想先看看它打算杀谁：
+
+```bash
+node scripts/helper.mjs --host <DSH 进程PID> --dry-run
+```
+
+它会把"进程链 / 要杀的 PID / 跳过的进程"全打出来，然后直接退出，什么都不干。
+
+接口一览（挂进 DSH 后路径不变）：
+
 
 | 接口 | 方法 | 说明 |
 |---|---|---|
