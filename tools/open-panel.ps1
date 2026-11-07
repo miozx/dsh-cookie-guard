@@ -1,4 +1,4 @@
-# 打开 DSH Cookie Guard 面板
+﻿# 打开 DSH Cookie Guard 面板
 # DSH 每次启动端口都会变，所以这里自动找：
 #   枚举本机 127.0.0.1 上正在监听的端口，逐个试 /cookie-guard/，第一个 200 的就是它。
 $ErrorActionPreference = 'SilentlyContinue'

@@ -155,27 +155,36 @@
 
   function render(data) {
     var rep = data.report || {};
-    var last = rep.last || null;
     var history = Array.isArray(rep.history) ? rep.history : [];
+    var last = rep.last || null;
+    // 大卡片只认"真的数过"的记录：被占用跳过（locked）的条目没有 before/after，
+    // 不该让整块变成「? → ?」，那样信息量为零。
+    function hasNum(e) { return !!e && e.before !== null && e.before !== undefined; }
+    var shown = history.slice().reverse().find(hasNum) || (hasNum(last) ? last : null);
+    var skipped = (last && !hasNum(last)) ? last : null;
 
     $('reportPath').textContent = rep.path || '—';
 
-    if (!last) {
+    if (!shown) {
       $('before').textContent = '—';
       $('after').textContent = '—';
-      $('verdict').textContent = '还没有数据';
-      $('verdict').className = 'tag';
-      $('when').textContent = '还没有报告 —— 用桌面上的「DSH（带体检启动）」启动一次就会有了。';
+      $('verdict').textContent = last ? statusTag(last.status).text : '还没有数据';
+      $('verdict').className = 'tag' + (last ? ' ' + statusTag(last.status).cls : '');
+      $('when').textContent = last
+        ? (last.local || last.ts || '') + '　（这次没拿到数字，' + statusTag(last.status).text + '）'
+        : '还没有报告 —— 用桌面上的「DSH（带体检启动）」启动一次就会有了。';
       $('rows').innerHTML = '<tr><td colspan="5" class="empty">还没有任何记录</td></tr>';
     } else {
-      $('before').textContent = (last.before === null || last.before === undefined) ? '?' : last.before;
-      $('after').textContent = (last.after === null || last.after === undefined) ? '?' : last.after;
-      var t = statusTag(last.status);
+      $('before').textContent = shown.before;
+      $('after').textContent = (shown.after === null || shown.after === undefined) ? '—' : shown.after;
+      var t = statusTag(shown.status);
       $('verdict').textContent = t.text;
       $('verdict').className = 'tag ' + t.cls;
-      $('when').textContent = (last.local || last.ts || '') +
-        (last.removed ? '　删除了 ' + last.removed + ' 条' : '') +
-        (last.durationMs ? '　耗时 ' + last.durationMs + ' ms' : '');
+      var when = (shown.local || shown.ts || '') +
+        (shown.removed ? '　删除了 ' + shown.removed + ' 条' : '') +
+        (shown.durationMs ? '　耗时 ' + shown.durationMs + ' ms' : '');
+      if (skipped) when += '　·　最近一次 ' + (skipped.local || skipped.ts || '') + ' 因 Cookies 被占用而跳过';
+      $('when').textContent = when;
 
       var rows = history.slice(-12).reverse().map(function (e) {
         var tt = statusTag(e.status);

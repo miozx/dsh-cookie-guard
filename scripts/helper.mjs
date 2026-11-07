@@ -174,15 +174,89 @@ for (const line of `${cr.stdout || ''}${cr.stderr || ''}`.split(/\r?\n/)) {
   if (line.trim()) log('  clean|', line.trim())
 }
 
-/* ---------- 4. 重新拉起（走启动器，日志统一进 launcher.log） ---------- */
-const startTarget = existsSync(launcher) ? launcher : exe
-log('重新启动:', startTarget)
-const s = spawn('cmd', ['/c', 'start', '', startTarget], {
-  detached: true,
-  stdio: 'ignore',
+/* ---------- 4. 清掉残留的子进程 ----------
+ * 只杀 DeepSeek Harness.exe 是不够的：它拉起的 node 子进程（billion-context 代理、
+ * cloudbase mcp）会活下来。实测：旧实例刚死就立刻拉起新实例，新进程 **0.04 秒就退出、exit=0**
+ * —— 这是"单实例交接"行为，说明旧实例的锁还没彻底放开，残留进程会把这个窗口拉长。
+ */
+const killedPids = unique.map(t => t.pid)
+const ps = `
+$roots = @(${killedPids.join(',')})
+$hit = @()
+$all = Get-CimInstance Win32_Process
+foreach ($k in ($all | Where-Object { $roots -contains $_.ParentProcessId })) {
+  if ($k.Name -eq 'node.exe' -or $k.Name -eq 'conhost.exe') {
+    try { Stop-Process -Id $k.ProcessId -Force -ErrorAction Stop; $hit += "$($k.ProcessId)($($k.Name))" } catch {}
+  }
+}
+foreach ($o in ($all | Where-Object { $_.Name -eq 'node.exe' -and $_.ExecutablePath -like '*node-shim*' })) {
+  try { Stop-Process -Id $o.ProcessId -Force -ErrorAction Stop; $hit += "$($o.ProcessId)(orphan-node)" } catch {}
+}
+$hit -join ','
+`
+const crKill = spawnSync('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', ps], {
+  encoding: 'utf8',
   windowsHide: true,
 })
-s.unref()
+log('清理残留子进程:', (crKill.stdout || '').trim() || '(没有残留)')
+
+/* ---------- 5. 重新拉起 ---------- */
+const exeDir = dirname(exe)
+function dshCount() {
+  const r = spawnSync('tasklist', ['/FI', 'IMAGENAME eq DeepSeek Harness.exe', '/NH', '/FO', 'CSV'], {
+    encoding: 'utf8',
+    windowsHide: true,
+  })
+  return ((r.stdout || '').match(/DeepSeek Harness\.exe/gi) || []).length
+}
+
+/**
+ * 先等旧实例从进程表里彻底消失。
+ * 上一版的教训：刚 taskkill 完，进程还在"正在结束"状态，tasklist 仍能看到它，
+ * 于是 [第 1 次检查：DSH 已经在跑了，不用再拉] 直接把启动跳过了 —— 实际什么都没起来。
+ */
+let quiet = 0
+while (dshCount() > 0 && quiet < 40) {
+  sleep(500)
+  quiet++
+}
+log(`等待旧实例退净：${(quiet * 0.5).toFixed(1)} 秒后剩 ${dshCount()} 个 DSH 进程`)
+
+let launched = false
+for (let attempt = 1; attempt <= 8 && !launched; attempt++) {
+  if (attempt > 1) {
+    log('等 3 秒再试（让单实例锁彻底释放）…')
+    sleep(3000)
+  }
+  log(`第 ${attempt} 次拉起:`, exe, '(cwd=' + exeDir + ')')
+  let died = null
+  // 【关键】必须清掉 ELECTRON_RUN_AS_NODE：
+  // 这个 helper 本身是被 DSH 用 ELECTRON_RUN_AS_NODE=1 拉起来的（拿 Electron 当 Node 用），
+  // 环境变量会被子进程继承 —— 不清的话 "DeepSeek Harness.exe" 会以 Node 模式启动，
+  // 没有脚本参数就直接退出（exit=0，约 40 毫秒），看起来就是"拉不起来"。
+  const env = { ...process.env }
+  delete env.ELECTRON_RUN_AS_NODE
+  delete env.ELECTRON_NO_ATTACH_CONSOLE
+  delete env.ELECTRON_ENABLE_LOGGING
+  const child = spawn(exe, [], { cwd: exeDir, env, detached: true, stdio: 'ignore' })
+  child.on('exit', code => { died = code === null ? -1 : code })
+  // 注意：不能 unref() 后再等 exit —— 这里要留住事件循环才能收到 exit
+  let waited = 0
+  while (waited < 10000 && died === null) { sleep(500); waited += 500 }
+
+  if (died === null) {
+    launched = true
+    log(`第 ${attempt} 次拉起成功：进程已存活 ${waited} 毫秒（pid=${child.pid}，tasklist 看到 ${dshCount()} 个）`)
+  } else {
+    log(`第 ${attempt} 次拉起失败：${waited} 毫秒内退出，exit=${died}（多半是旧实例的锁还在）`)
+  }
+}
+
+if (!launched) {
+  log('ERROR: 拉了 8 次都没起来 —— 请手动双击桌面「DSH（带体检启动）」或直接开 DeepSeek Harness.exe')
+} else if (dshCount() === 0) {
+  log('注意: spawn 报告存活，但 tasklist 里看不到它，可能是进程名不同')
+}
 
 log('=== helper done ===')
-process.exit(0)
+process.exit(launched ? 0 : 1)
