@@ -97,6 +97,22 @@ node scripts/helper.mjs --host <DSH 进程PID> --dry-run
 
 > 「清理并重启」是第 3 步，明确不做假成功：没实现就返回 501，页面上的按钮也是灰的。
 
+## 挂进 DSH（可选）
+
+插件形态下 `/cookie-guard/` 由 DSH 自己托管，地址是 `http://127.0.0.1:<DSH端口>/cookie-guard/`。
+
+挂载方式（以 `link:` 本地链接为例，改 `C:\Users\<你>\.dsh\profiles\desktop\package.json`）：
+
+```jsonc
+"dependencies": { "dsh-cookie-guard": "link:D:\\path\\to\\dsh-cookie-guard" },
+"dsh": { "profile": { "bundles": [ ..., "dsh-cookie-guard" ] } }
+```
+
+然后在该目录执行 `pnpm install`（lockfile 过期时加 `--no-frozen-lockfile`），重启 DSH。
+
+**卸载**：把上面两处删掉，再 `pnpm install`，重启。装不上/起不来时，崩溃对话框里的
+「Disable third-party plugins」按钮也能兜底。
+
 ## 全部参数
 
 ```
