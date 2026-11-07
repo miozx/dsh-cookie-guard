@@ -3,6 +3,11 @@
   "version": "0.2.0",
   "private": true,
   "type": "module",
+  "main": "./lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./package.json": "./package.json"
+  },
   "description": "DSH Desktop 的 dsh-auth cookie 堆积防护：启动前体检 + 超阈值清理 + 只读面板",
   "keywords": ["dsh", "deepseek-harness", "cookie", "http-431", "electron"],
   "engines": {
@@ -17,8 +22,11 @@
     },
     "compatibility": {
       "dshReleases": {
-        "0.2.0-rc.5": "compatible",
-        "0.2.1": "compatible"
+        "0.2.2-rc.1": "compatible",
+        "0.2.2": "compatible",
+        "0.2.1": "compatible",
+        "0.2.1-rc.3": "compatible",
+        "0.2.0-rc.5": "compatible"
       }
     }
   },
