@@ -141,6 +141,7 @@
   var STATUS_URL = BASE + '/api/status';
   var CLEAN_URL = BASE + '/api/clean';
   var timer = null;
+  var closing = false; // 已发起「清理并重启」：DSH 正在退出，此时的 fetch 失败是预期内的
 
   function $(id) { return document.getElementById(id); }
 
@@ -212,6 +213,14 @@
 
   function fail(err) {
     $('dot').className = 'dot off';
+    if (closing) {
+      // 点了「清理并重启」之后 DSH 会主动退出，这时候 fetch 必然失败 —— 这是预期内的，
+      // 不该显示成红色的「读取失败」，否则用户会以为出错了。
+      $('conn').textContent = 'DSH 已关闭，正在清理并重启 —— 本页已停止刷新，DSH 回来后重新打开即可。';
+      $('verdict').textContent = '正在重启';
+      $('verdict').className = 'tag';
+      return;
+    }
     $('conn').textContent = '读取失败：' + (err && err.message ? err.message : err);
     $('verdict').textContent = '连不上';
     $('verdict').className = 'tag bad';
@@ -257,6 +266,8 @@
           return;
         }
         if (res.status === 202) {
+          closing = true;
+          clearInterval(timer); // DSH 马上要退出，再刷新只会刷出 Failed to fetch
           hint.textContent = '已发起：DSH 会在 2～3 秒内关闭，清理后自动重启。这个页面稍后会断开。';
           $('conn').textContent = '已发起清理，DSH 正在退出…';
           $('dot').className = 'dot off';
