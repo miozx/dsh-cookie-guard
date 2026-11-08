@@ -170,3 +170,71 @@ git push                   # 上传
 7. 建仓库 → 推送 → 打 tag → 发 Release
 
 下次你自己发新项目，就按第 5、6、11 节的清单做，命令行部分照着第 3 节抄。
+
+---
+
+## 12. 附：`git push` 卡住/超时怎么办
+
+这是国内网络最常见的问题，也是最容易被误判成"账号有问题"的问题。
+本次发布就撞上了，症状和排查过程照抄如下。
+
+**症状**
+
+```
+$ git push -u origin main
+fatal: unable to access 'https://github.com/xxx/yyy.git/':
+Failed to connect to github.com:443 after 21077 ms: Could not connect to server
+```
+
+**先分清是「线路」还是「账号」——三条命令**
+
+```powershell
+# 1. API 能不能通（能通 = 网络基本没问题，只是网页/推送的域名被限）
+Invoke-WebRequest https://api.github.com -Method Head -TimeoutSec 12
+
+# 2. 真正卡住的端口
+Test-NetConnection github.com -Port 443 -InformationLevel Quiet
+
+# 3. 用 git 自己的通道测（最准，push 走的就是它）
+git ls-remote --heads https://github.com/git/git.git
+```
+
+本次实测：
+
+| 检查 | 结果 | 含义 |
+|---|---|---|
+| `api.github.com` | 200，435 ms | 不是断网，也不是账号问题 |
+| `github.com:443` | 不通 | 线路问题，push 必然失败 |
+| `git ls-remote` | 21.8 s 后失败 | 同上，确认 |
+
+**解法：用加速器（本项目用的是 Watt Toolkit / Steam++）**
+
+勾上 GitHub 加速后复测：
+
+```
+github.com:443            -> 通
+git ls-remote github.com  -> 1.8 秒        ← 从 21.8 秒降到 1.8 秒
+```
+
+加速器只改本机 hosts + 本地代理，不动你的账号，用完关掉即可。
+
+**备选：走 SSH 的 443 端口**
+
+`ssh.github.com:443` 通常比 `github.com:443` 好连，因为它伪装成普通 HTTPS 端口。
+前提是你有一对 SSH 密钥，并把公钥贴到 GitHub → Settings → SSH and GPG keys：
+
+```bash
+# ~/.ssh/config
+Host github.com
+  HostName ssh.github.com
+  Port 443
+  User git
+```
+
+**两个容易误判的报错**
+
+| 报错 | 真正含义 |
+|---|---|
+| `403 已禁止` / `API rate limit exceeded` | 未登录状态下每小时只能查 60 次 API，查多了就 403。**跟你的仓库无关**，登录或等一小时即可 |
+| `Repository not found` | 一半是名字打错，另一半是**还没在网页上创建空仓库**——git 不会替你建仓库 |
+
