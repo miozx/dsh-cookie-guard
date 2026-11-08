@@ -28,6 +28,49 @@ node test/selftest.mjs      # 自测
 纯命令行用法见 [用法](#用法)。更新记录见 [CHANGELOG.md](CHANGELOG.md)。
 第一次发 GitHub、想照抄流程的，看 [docs/如何发布到-GitHub.md](docs/如何发布到-GitHub.md)。
 
+## 别人怎么拿到它
+
+| 方式 | 适合谁 | 怎么做 |
+|---|---|---|
+| **① 下载 ZIP** | 只想用，不改代码 | 仓库页绿色 `Code` 按钮 → `Download ZIP` → 解压到固定目录 |
+| **② Release 页** | 想要"钉死在某个版本" | [Releases](../../releases) → 选 `v0.3.2` → `Source code (zip)` |
+| **③ git clone** | 想跟着更新 | `git clone https://github.com/woshixiaoshuai2333/dsh-cookie-guard.git` |
+
+> 目前**没有发布到 npm**，所以暂时没有 `npm i dsh-cookie-guard` 这一行：先手动放好目录，再按下面的步骤挂进 DSH。
+
+## 装进自己的 DSH（四步）
+
+前提：Windows；DSH Desktop **0.2.2-rc.1**（更老的版本没有 `settings.section` 槽位，面板那部分不会出现，命令行功能不受影响）；`node` ≥ 22.5。
+
+1. 把仓库放到一个固定目录，例如 `D:\tools\dsh-cookie-guard`（路径带空格也能用，但少一层麻烦）
+2. 编辑 `C:\Users\<你的用户名>\.dsh\profiles\desktop\package.json`，改两个地方：
+
+```jsonc
+{
+  "dependencies": {
+    // 新增这一行，路径换成你放仓库的真实位置
+    "dsh-cookie-guard": "link:D:\\tools\\dsh-cookie-guard"
+  },
+  "dsh": {
+    "profile": {
+      "bundles": [/* … 原有内容不要动 … */, "dsh-cookie-guard"]  // 末尾加上包名
+    }
+  }
+}
+```
+
+3. 在同一个目录执行（`pnpm` 用 DSH 自带的那个也行）：
+
+```bash
+pnpm install --no-frozen-lockfile
+```
+
+4. **完全退出** DSH（托盘图标也要退），重新启动。
+
+装好后：**设置 → Cookie Guard** 里就有面板；`http://127.0.0.1:<端口>/cookie-guard/` 也能直接打开。
+
+**卸载**：删掉上面那两行 → 再 `pnpm install` → 重启。如果装完起不来，点崩溃框里的「禁用第三方插件、备份 profile patch 并重启」即可自救。
+
 
 ## 现象与原理
 
