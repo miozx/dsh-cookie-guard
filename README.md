@@ -1,14 +1,33 @@
 # dsh-cookie-guard
 
+[![tests](https://img.shields.io/badge/tests-5%20suites%20passing-brightgreen)](#测试)
+[![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+![platform](https://img.shields.io/badge/platform-Windows%20%7C%20DSH%20Desktop-lightgrey)
+
 DSH Desktop（DeepSeek Harness）启动失败的常见元凶之一：**`dsh-auth-*` cookie 无限堆积，把 `Cookie` 请求头撑爆，宿主返回 HTTP 431，桌面端报 `desktop welcome: Web authentication failed`，表现就是白屏 / 打不开。**
 
 本项目只做三件事，并且都可审计、可回滚：
 
 1. **体检**（任意时刻，只读）：数一数 `Cookies` 库里有多少条 `dsh-auth-*`；
 2. **清理**（只在 DSH 关着的时候）：删掉多余的，**只保留最新 1 条**；
-3. **启动器**（可选）：双击先体检 → 超标就先清 → 再拉起 DSH，让"清理"永远发生在文件没被锁的时候。
+3. **启动器 + 面板**（可选）：双击先体检 → 超标就先清 → 再拉起 DSH；面板挂在 DSH 的**设置 → Cookie Guard**，也能用桌面快捷方式在浏览器里看。
+
+![面板](docs/screenshot-panel.png)
 
 > 为什么不能"边跑边清"：`Network\Cookies` 被 Electron 独占（实测 `Copy-Item` 与只读打开都会 `EBUSY`）。任何声称能在运行中清理的实现都值得怀疑。
+
+## 快速开始
+
+```bash
+git clone <this repo> && cd dsh-cookie-guard
+node lib/probe.mjs          # 只读体检
+node test/selftest.mjs      # 自测
+```
+
+挂进 DSH 桌面（让 `/cookie-guard/` 由宿主托管、并出现在设置里）见 [挂进 DSH](#挂进-dsh可选)。
+纯命令行用法见 [用法](#用法)。更新记录见 [CHANGELOG.md](CHANGELOG.md)。
+第一次发 GitHub、想照抄流程的，看 [docs/如何发布到-GitHub.md](docs/如何发布到-GitHub.md)。
+
 
 ## 现象与原理
 
