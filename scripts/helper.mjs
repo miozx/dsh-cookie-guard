@@ -165,7 +165,8 @@ sleep(1200)
 
 /* ---------- 3. 清理 ---------- */
 const cleanJs = join(projectRoot, 'scripts', 'clean.mjs')
-const cr = spawnSync(process.execPath, [cleanJs, '--force', '--keep', '1'], {
+/* --threshold 只为让报告里记的阈值与实际策略一致：按钮的语义就是"清到只剩最新一条" */
+const cr = spawnSync(process.execPath, [cleanJs, '--force', '--threshold', '1', '--keep', '1'], {
   encoding: 'utf8',
   windowsHide: true,
 })

@@ -99,21 +99,45 @@ node scripts/helper.mjs --host <DSH 进程PID> --dry-run
 > `scripts/helper.mjs` 在另一个进程里做，并且只按 PID 杀同名进程 —— 绝不用
 > `taskkill /im` 按名字杀，那样会误伤你的编辑器和其他窗口。
 
-## 为什么不把面板塞进 DSH 的界面里
+## 把面板塞进 DSH 的界面里（踩了三个坑）
 
-试过了，两个独立的墙，都在这台机器的 DSH 0.2.2-rc.1 上验证过：
+DSH 的窗口加载的是 `dsh-app://app/...`，不是 http 站点，但客户端插件完全可以往里挂 UI。
+三个字段各管一件事，**错一个就静默失败**：
 
-1. **界面跑在自定义协议下**。DSH 的窗口加载的是 `dsh-app://app/...`，不是 http 站点。
-   客户端插件（`dsh.client` + `exports["./client"]`）确实会被宿主扫描到 ——
-   `mount.log` 里能看到 `dsh-cookie-guard -> client(web)` 出现在 81 个 client 行中，
-   和 `dsh-better-sidebar` 同构；但浏览器侧那份 bundle **一次都没被执行**
-   （`localStorage` 无记录、窗口标题无标记）。
-2. **外壳不许嵌本机 http 页面**。用 DSH 侧边栏的浏览器打开
-   `http://127.0.0.1:<端口>/cookie-guard/` 会白屏，而服务端日志里**一条请求都没有** ——
-   说明是在发请求之前就被沙箱/CSP 拦了，页本身没问题（同一地址 Edge 正常）。
+| 位置 | 字段 | 填什么 |
+|---|---|---|
+| `package.json` | `exports["./client"]` | 浏览器半侧入口文件，如 `"./lib/client.js"` |
+| `package.json` | `dsh.client.inject` | **真实存在的客户端包 id**（如 `@deepseek-ai/dsh-client-connection`）。填了不存在的包，启动会卡在 `pending (waiting for service: …)`，并把整个应用顶成崩溃框 |
+| 入口文件 | `module.exports.inject` | **Cordis 服务名**（`slots` / `locale` / `sessions` …）。不填或填错，`ctx.slots` 就不存在，`apply` 会在第一行静默返回 |
 
-结论：这个版本里"面板显示在 DSH 窗口内"做不到。所以面板就是一个普通网页，
-用桌面快捷方式（自动探测端口，因为每次启动端口都变）打开。
+我一开始把服务名当成包 id 填进了 `dsh.client.inject`（启动崩），又把 `module.exports.inject`
+写成了空数组（UI 永不出现）。两次都不报错，所以查了很久。
+
+现在挂的是 `settings.section` 槽位：
+
+```js
+module.exports = {
+  name: 'dsh-cookie-guard',
+  inject: ['slots'],
+  apply(ctx) {
+    ctx.slots.inject('settings.section', () =>
+      ctx.slots.register(
+        { name: 'settings.section', id: 'dsh-cookie-guard', order: 150, label: () => 'Cookie Guard' },
+        Section
+      ))
+  }
+}
+```
+
+`Section` 里是一个 `<iframe src="<同源>/cookie-guard/">`，复用宿主已经托管的那份页面，
+面板逻辑只有一份。`dsh-app://` 下拿不到 http origin，所以地址回退到
+`window.__DSH_BOOT__` 里扫出来的 `http://127.0.0.1:<端口>`。
+
+> 独立的网页入口仍然保留：插件没挂载、或者只想在浏览器里看时，桌面快捷方式照样能用。
+
+**调试提醒**：改完插件要**完全退出 DSH 再启动**。判断有没有真的重启，别问"是不是重启了"，
+去比 `Get-CimInstance Win32_Process -Filter "Name='DeepSeek Harness.exe'"` 的 `CreationDate`
+和文件修改时间 —— 我因为漏了这一步，白跑了两轮"改了没效果"。
 
 ## 挂进 DSH（可选）
 

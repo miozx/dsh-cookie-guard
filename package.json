@@ -1,15 +1,22 @@
 {
   "name": "dsh-cookie-guard",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "private": true,
   "type": "module",
   "main": "./lib/index.js",
   "exports": {
     ".": "./lib/index.js",
+    "./client": "./lib/client.js",
     "./package.json": "./package.json"
   },
   "description": "DSH Desktop 的 dsh-auth cookie 堆积防护：启动前体检 + 超阈值清理 + 只读面板",
-  "keywords": ["dsh", "deepseek-harness", "cookie", "http-431", "electron"],
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "cookie",
+    "http-431",
+    "electron"
+  ],
   "engines": {
     "node": ">=22.5"
   },
@@ -28,6 +35,12 @@
         "0.2.1-rc.3": "compatible",
         "0.2.0-rc.5": "compatible"
       }
+    },
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-connection"
+      ],
+      "platform": "web"
     }
   },
   "files": [
@@ -37,7 +50,7 @@
     "README.md"
   ],
   "scripts": {
-    "test": "node test/selftest.mjs && node test/clean.test.mjs && node test/prelaunch.test.mjs && node test/panel.test.mjs",
+    "test": "node test/selftest.mjs && node test/clean.test.mjs && node test/prelaunch.test.mjs && node test/panel.test.mjs && node test/client.test.mjs",
     "check": "node lib/probe.mjs --json",
     "clean": "node scripts/clean.mjs --dry-run",
     "clean:force": "node scripts/clean.mjs --force",
