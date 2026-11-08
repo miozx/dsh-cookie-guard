@@ -93,9 +93,27 @@ node scripts/helper.mjs --host <DSH 进程PID> --dry-run
 |---|---|---|
 | `/cookie-guard/` | GET | 面板页面 |
 | `/cookie-guard/api/status` | GET | 只读状态 JSON |
-| `/cookie-guard/api/clean` | POST | **尚未实现**，现在固定返回 `501 not-implemented` |
+| `/cookie-guard/api/clean` | POST | 先回 `202`，再让独立进程等你点按钮的那个 DSH 退出、清理、重新拉起 |
 
-> 「清理并重启」是第 3 步，明确不做假成功：没实现就返回 501，页面上的按钮也是灰的。
+> 「清理并重启」必须**等在 DSH 退出之后**才能动 Cookies（进程独占锁），所以它由
+> `scripts/helper.mjs` 在另一个进程里做，并且只按 PID 杀同名进程 —— 绝不用
+> `taskkill /im` 按名字杀，那样会误伤你的编辑器和其他窗口。
+
+## 为什么不把面板塞进 DSH 的界面里
+
+试过了，两个独立的墙，都在这台机器的 DSH 0.2.2-rc.1 上验证过：
+
+1. **界面跑在自定义协议下**。DSH 的窗口加载的是 `dsh-app://app/...`，不是 http 站点。
+   客户端插件（`dsh.client` + `exports["./client"]`）确实会被宿主扫描到 ——
+   `mount.log` 里能看到 `dsh-cookie-guard -> client(web)` 出现在 81 个 client 行中，
+   和 `dsh-better-sidebar` 同构；但浏览器侧那份 bundle **一次都没被执行**
+   （`localStorage` 无记录、窗口标题无标记）。
+2. **外壳不许嵌本机 http 页面**。用 DSH 侧边栏的浏览器打开
+   `http://127.0.0.1:<端口>/cookie-guard/` 会白屏，而服务端日志里**一条请求都没有** ——
+   说明是在发请求之前就被沙箱/CSP 拦了，页本身没问题（同一地址 Edge 正常）。
+
+结论：这个版本里"面板显示在 DSH 窗口内"做不到。所以面板就是一个普通网页，
+用桌面快捷方式（自动探测端口，因为每次启动端口都变）打开。
 
 ## 挂进 DSH（可选）
 
