@@ -2,7 +2,10 @@
 
 [![tests](https://img.shields.io/badge/tests-5%20suites%20passing-brightgreen)](#测试)
 [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![npm](https://img.shields.io/badge/npm-dsh--cookie431-cb3837)](https://www.npmjs.com/package/dsh-cookie431)
 ![platform](https://img.shields.io/badge/platform-Windows%20%7C%20DSH%20Desktop-lightgrey)
+
+> **名字说明**：GitHub 仓库叫 `dsh-cookie-guard`，npm 包叫 **`dsh-cookie431`**（原名在 npm 上已被他人占用）。两者是同一份代码。
 
 DSH Desktop（DeepSeek Harness）启动失败的常见元凶之一：**`dsh-auth-*` cookie 无限堆积，把 `Cookie` 请求头撑爆，宿主返回 HTTP 431，桌面端报 `desktop welcome: Web authentication failed`，表现就是白屏 / 打不开。**
 
@@ -32,11 +35,18 @@ node test/selftest.mjs      # 自测
 
 | 方式 | 适合谁 | 怎么做 |
 |---|---|---|
-| **① 下载 ZIP** | 只想用，不改代码 | 仓库页绿色 `Code` 按钮 → `Download ZIP` → 解压到固定目录 |
-| **② Release 页** | 想要"钉死在某个版本" | [Releases](../../releases) → 选 `v0.3.2` → `Source code (zip)` |
-| **③ git clone** | 想跟着更新 | `git clone https://github.com/woshixiaoshuai2333/dsh-cookie-guard.git` |
+| **① 一行安装**（最省事） | 已经装好 DSH 桌面 | 在 profile 目录里 `pnpm add dsh-cookie431`，然后重启 DSH |
+| **② 下载 ZIP** | 只想用，不改代码 | 仓库页绿色 `Code` 按钮 → `Download ZIP` → 解压到固定目录 |
+| **③ Release 页** | 想要"钉死在某个版本" | [Releases](../../releases) → 选 `v0.3.2` → `Source code (zip)` |
+| **④ git clone** | 想跟着更新 | `git clone https://github.com/woshixiaoshuai2333/dsh-cookie-guard.git` |
 
-> 目前**没有发布到 npm**，所以暂时没有 `npm i dsh-cookie-guard` 这一行：先手动放好目录，再按下面的步骤挂进 DSH。
+一行安装的完整命令（`<profile>` 换成 `desktop`，`<DSH>` 换成你的 `.dsh` 路径）：
+
+```bash
+cd C:\Users\<你>\.dsh\profiles\desktop
+pnpm add dsh-cookie431
+# 完全退出 DSH 再启动
+```
 
 ## 装进自己的 DSH（四步）
 
@@ -49,11 +59,11 @@ node test/selftest.mjs      # 自测
 {
   "dependencies": {
     // 新增这一行，路径换成你放仓库的真实位置
-    "dsh-cookie-guard": "link:D:\\tools\\dsh-cookie-guard"
+    "dsh-cookie431": "link:D:\\tools\\dsh-cookie-guard"
   },
   "dsh": {
     "profile": {
-      "bundles": [/* … 原有内容不要动 … */, "dsh-cookie-guard"]  // 末尾加上包名
+      "bundles": [/* … 原有内容不要动 … */, "dsh-cookie431"]  // 末尾加上包名
     }
   }
 }

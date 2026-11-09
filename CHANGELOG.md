@@ -28,3 +28,9 @@
 
 - 第一版：`probe.mjs`（只读计数）、`clean.mjs`（清到只剩最新 N 条）、`prelaunch.mjs`（启动前体检）、
   `lib/panel.html` + `lib/routes.mjs`（只读面板）、`scripts/helper.mjs`（清理并重启）。
+
+## 0.3.3 — 2026-11-09
+
+- 发布到 npm，包名 **dsh-cookie431**（原名 `dsh-cookie-guard` 已被他人占用，仓库名保持 `dsh-cookie-guard` 不变）
+- `package.json` 的 `name`、`cordis.patch.yml` 的 `id`/`name`、profile 依赖键同步改名，避免 patch 名与安装目录不一致导致插件静默不加载
+- 补 `repository` / `homepage` / `bugs` / `publishConfig` 字段，`bin` 命令改为 `dsh-cookie431`

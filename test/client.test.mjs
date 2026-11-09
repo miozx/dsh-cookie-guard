@@ -98,7 +98,7 @@ console.log('client.test.mjs')
 {
   const { state } = runClient()
   check('loader.load is called with the package id', !!state.module, 'module not produced')
-  check('name is dsh-cookie-guard', state.module?.name === 'dsh-cookie-guard', state.module?.name)
+  check('name is dsh-cookie431', state.module?.name === 'dsh-cookie431', state.module?.name)
   check(
     'inject lists the "slots" SERVICE, not a package id',
     JSON.stringify(state.module?.inject) === '["slots"]',
@@ -113,7 +113,7 @@ console.log('client.test.mjs')
   const desc = state.registered[0] ?? {}
   check('injects into the settings.section slot', log.includes('slot.inject:settings.section'), log.join(','))
   check('registers name=settings.section', desc.name === 'settings.section', desc.name)
-  check('registers id=dsh-cookie-guard', desc.id === 'dsh-cookie-guard', desc.id)
+  check('registers id=dsh-cookie431', desc.id === 'dsh-cookie431', desc.id)
   check('label() returns Cookie Guard', typeof desc.label === 'function' && desc.label() === 'Cookie Guard')
 }
 

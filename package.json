@@ -1,7 +1,6 @@
 {
-  "name": "dsh-cookie-guard",
-  "version": "0.3.2",
-  "private": true,
+  "name": "dsh-cookie431",
+  "version": "0.3.3",
   "type": "module",
   "main": "./lib/index.js",
   "exports": {
@@ -9,7 +8,7 @@
     "./client": "./lib/client.js",
     "./package.json": "./package.json"
   },
-  "description": "DSH Desktop 的 dsh-auth cookie 堆积防护：启动前体检 + 超阈值清理 + 只读面板",
+  "description": "DSH Desktop 的 dsh-auth cookie 堆积防护：启动前体检 + 超阈值清理 + 只读面板 (HTTP 431 fix)",
   "keywords": [
     "dsh",
     "deepseek-harness",
@@ -21,7 +20,15 @@
     "node": ">=22.5"
   },
   "bin": {
-    "dsh-cookie-guard": "./scripts/clean.mjs"
+    "dsh-cookie431": "./scripts/clean.mjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/woshixiaoshuai2333/dsh-cookie-guard.git"
+  },
+  "homepage": "https://github.com/woshixiaoshuai2333/dsh-cookie-guard#readme",
+  "bugs": {
+    "url": "https://github.com/woshixiaoshuai2333/dsh-cookie-guard/issues"
   },
   "dsh": {
     "bundle": {
@@ -56,6 +63,9 @@
     "clean:force": "node scripts/clean.mjs --force",
     "prelaunch": "node scripts/prelaunch.mjs",
     "panel": "node scripts/panel-serve.mjs"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "license": "MIT"
 }
