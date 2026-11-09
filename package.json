@@ -19,9 +19,6 @@
   "engines": {
     "node": ">=22.5"
   },
-  "bin": {
-    "dsh-cookie431": "./scripts/clean.mjs"
-  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/woshixiaoshuai2333/dsh-cookie-guard.git"
