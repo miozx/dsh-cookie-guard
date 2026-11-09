@@ -247,8 +247,16 @@ probe.mjs         --json
 ## 测试
 
 ```bash
-npm test        # 三套：自检、clean 端到端、prelaunch 端到端
+npm test        # 五套：自检 / clean 端到端 / prelaunch 端到端 / 面板路由 / 客户端契约
 ```
+
+| 套件 | 项数 | 管什么 |
+|---|---|---|
+| `test/selftest.mjs` | 5 | 探针能否正确数出 `dsh-auth-*`、不把无关 cookie 算进来 |
+| `test/clean.test.mjs` | 18 | 清理、保留最新一条、dry-run、64 位时间戳精度 |
+| `test/prelaunch.test.mjs` | 8 | 阈值判定、被占用时绝不阻塞启动 |
+| `test/panel.test.mjs` | 32 | 三个接口、405/501 语义、前缀误匹配 |
+| `test/client.test.mjs` | 16 | 设置页插槽契约（`inject` 必须是 `["slots"]`） |
 
 测试全部在临时目录里跑（`APPDATA` / `DSH_HOME` 指向 tmp），**绝不碰线上 profile**。
 
