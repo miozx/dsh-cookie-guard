@@ -35,18 +35,34 @@ node test/selftest.mjs      # 自测
 
 | 方式 | 适合谁 | 怎么做 |
 |---|---|---|
-| **① 一行安装**（最省事） | 已经装好 DSH 桌面 | 在 profile 目录里 `pnpm add dsh-cookie431`，然后重启 DSH |
-| **② 下载 ZIP** | 只想用，不改代码 | 仓库页绿色 `Code` 按钮 → `Download ZIP` → 解压到固定目录 |
-| **③ Release 页** | 想要"钉死在某个版本" | [Releases](../../releases) → 选 `v0.3.2` → `Source code (zip)` |
-| **④ git clone** | 想跟着更新 | `git clone https://github.com/woshixiaoshuai2333/dsh-cookie-guard.git` |
+| **① 在 DSH 界面里装**（最省事，推荐） | 已经装好 DSH 桌面、不想碰命令行 | 插件页 →「+ 添加插件」→ 输入 `dsh-cookie431` → 安装 → 重启 DSH |
+| **② 一行安装** | 想用命令行 | 在 profile 目录里 `pnpm add dsh-cookie431`，然后重启 DSH |
+| **③ 下载 ZIP** | 只想用，不改代码 | 仓库页绿色 `Code` 按钮 → `Download ZIP` → 解压到固定目录 |
+| **④ Release 页** | 想要"钉死在某个版本" | [Releases](../../releases) → 选 `v0.3.3` → `Source code (zip)` |
+| **⑤ git clone** | 想跟着更新 | `git clone https://github.com/woshixiaoshuai2333/dsh-cookie-guard.git` |
 
-一行安装的完整命令（`<profile>` 换成 `desktop`，`<DSH>` 换成你的 `.dsh` 路径）：
+### ① 在 DSH 界面里装（推荐）
+
+DSH 桌面自带插件安装器，会**同时**写入 `dependencies` 和 `dsh.profile.bundles`，不用手改任何 JSON：
+
+1. 左侧 **插件** → 右上 **「+ 添加插件」**
+2. 输入框填 `dsh-cookie431`（只填包名，不要填 URL）
+3. 安装源：默认 `registry.npmjs.org`；国内网络慢就切 **「中国大陆镜像源」**
+   （注意：镜像同步新版本有延迟，刚发布的版本可能还没同步，报"找不到版本"时换回官方源）
+4. 点安装，等它跑完 pnpm（一般几秒）
+5. **完全退出** DSH（托盘图标也要退），重新启动
+
+> 别用"GitHub 仓库地址"那一栏装：那条路要本机有 git 并且能连上 github.com，国内多半走不通。
+
+### ② 一行安装的完整命令（`<profile>` 换成 `desktop`，`<DSH>` 换成你的 `.dsh` 路径）
 
 ```bash
 cd C:\Users\<你>\.dsh\profiles\desktop
 pnpm add dsh-cookie431
 # 完全退出 DSH 再启动
 ```
+
+> 只想手工装、或者要把仓库放在自己目录里当软链接的，看下一节。
 
 ## 装进自己的 DSH（四步）
 
