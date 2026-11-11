@@ -1,4 +1,4 @@
-﻿{
+{
     "name":  "dsh-cookie431",
     "version":  "0.3.5",
     "type":  "module",
@@ -8,7 +8,7 @@
                     "./client":  "./lib/client.js",
                     "./package.json":  "./package.json"
                 },
-    "description":  "DSH Desktop 鐨?dsh-auth cookie 鍫嗙Н闃叉姢锛氬惎鍔ㄥ墠浣撴 + 瓒呴槇鍊兼竻鐞?+ 鍙闈㈡澘 (HTTP 431 fix)",
+    "description":  "DSH Desktop 的 dsh-auth cookie 堆积防护：启动前体检 + 超阈值清理 + 只读面板 (HTTP 431 fix)",
     "keywords":  [
                      "dsh",
                      "deepseek-harness",
@@ -51,7 +51,7 @@
                   "lib/",
                   "scripts/",
                   "launcher/",
-                  "!launcher/鎵撳紑Cookie闈㈡澘.cmd",
+                  "!launcher/打开Cookie面板.cmd",
                   "cordis.patch.yml",
                   "README.md",
                   "CHANGELOG.md"
