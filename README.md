@@ -54,6 +54,28 @@ DSH 桌面自带插件安装器，会**同时**写入 `dependencies` 和 `dsh.pr
 
 > 别用"GitHub 仓库地址"那一栏装：那条路要本机有 git 并且能连上 github.com，国内多半走不通。
 
+### ⚠️ 装完还要做一步：装启动器（否则等于没装）
+
+插件本身只提供**面板**和**手动清理按钮**。真正的"每次启动自动体检"靠一个**启动器**——
+没有它，面板永远是"还没有数据"，你的 cookie 也照旧在长。
+
+补上它只要一次点击：
+
+1. 打开面板（设置 → **Cookie Guard**，或 `http://127.0.0.1:<端口>/cookie-guard/`）
+2. 点 **「安装启动器」**
+3. 之后用桌面上新出现的 **「DSH（带体检启动）」** 启动 DSH
+
+它会在 `%LOCALAPPDATA%\dsh-cookie431\` 写一个 `start-dsh.cmd`，并在桌面建一个快捷方式；
+删掉这两样就完全恢复原状，不碰注册表、不碰系统目录。
+
+命令行等价物（已经用插件页/npm 装好的人，路径按自己的改）：
+
+```bash
+node "C:\Users\<你>\.dsh\profiles\desktop\node_modules\dsh-cookie431\lib\launcher.mjs" --exe "D:\Deepseek\DeepSeek Harness.exe"
+```
+
+> 不知道自己该传什么 `--exe`：直接在 DSH 里点面板上那个按钮就行，它会自己填。
+
 ### ② 一行安装的完整命令（`<profile>` 换成 `desktop`，`<DSH>` 换成你的 `.dsh` 路径）
 
 ```bash
@@ -263,7 +285,7 @@ probe.mjs         --json
 ## 测试
 
 ```bash
-npm test        # 五套：自检 / clean 端到端 / prelaunch 端到端 / 面板路由 / 客户端契约
+npm test        # 六套：自检 / clean / prelaunch / 面板路由 / 客户端契约 / 启动器安装
 ```
 
 | 套件 | 项数 | 管什么 |
@@ -271,10 +293,12 @@ npm test        # 五套：自检 / clean 端到端 / prelaunch 端到端 / 面�
 | `test/selftest.mjs` | 5 | 探针能否正确数出 `dsh-auth-*`、不把无关 cookie 算进来 |
 | `test/clean.test.mjs` | 18 | 清理、保留最新一条、dry-run、64 位时间戳精度 |
 | `test/prelaunch.test.mjs` | 8 | 阈值判定、被占用时绝不阻塞启动 |
-| `test/panel.test.mjs` | 32 | 三个接口、405/501 语义、前缀误匹配 |
+| `test/panel.test.mjs` | 42 | 五个接口、405 语义、前缀误匹配、启动器状态与安装 |
 | `test/client.test.mjs` | 16 | 设置页插槽契约（`inject` 必须是 `["slots"]`） |
+| `test/launcher.test.mjs` | 25 | 生成的 `.cmd` 是纯 ASCII + CRLF、dry-run 不落盘、路径可覆盖 |
 
-测试全部在临时目录里跑（`APPDATA` / `DSH_HOME` 指向 tmp），**绝不碰线上 profile**。
+测试全部在临时目录里跑（`APPDATA` / `DSH_HOME` / `CG_LAUNCHER_DIR` / `CG_DESKTOP_DIR` 指向 tmp），
+**绝不碰线上 profile，也绝不往真实桌面写快捷方式**。
 
 ## 安全边界
 
@@ -285,7 +309,12 @@ npm test        # 五套：自检 / clean 端到端 / prelaunch 端到端 / 面�
 
 ## 回滚
 
-删掉本目录即可。如果用了启动器快捷方式，改用原来的 `DeepSeek Harness.exe`。
+删掉本目录即可。如果装了启动器，再删两样：
+
+- `%LOCALAPPDATA%\dsh-cookie431\`（整个文件夹，里面只有 `start-dsh.cmd` 和 `launcher.log`）
+- 桌面上的「DSH（带体检启动）」快捷方式
+
+之后改用原来的 `DeepSeek Harness.exe` 启动即可，cookie 会重新慢慢累积（这就是它本来的样子）。
 
 ## 路线图
 

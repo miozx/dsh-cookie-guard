@@ -1,5 +1,31 @@
 # 更新记录
 
+## v0.3.4 — 2026-11-11
+
+**修一个真问题：从 npm / 插件页装进来的人，防护其实是关着的。**
+
+只装插件只有面板和手动按钮 —— 自动体检（`prelaunch.mjs`）只有启动器会调用，
+所以新装的人面板永远显示"还没有数据"，平时启动也不会清理。
+
+- **新增一键安装启动器**：面板「操作」区多了「安装启动器」按钮 → `POST /cookie-guard/api/install-launcher`，
+  在 `%LOCALAPPDATA%\dsh-cookie431\` 生成 `start-dsh.cmd`，并在桌面建「DSH（带体检启动）」快捷方式。
+  可逆：删掉这两样即可；不写注册表、不碰系统目录。
+- `/api/status` 新增 `launcher` 段（`installed` / `cmdPath` / `lnkExists`），面板据此决定显示
+  「去安装」还是「已就位」。
+- 面板空状态文案不再硬编码"用桌面上的快捷方式"，没装启动器时直接引导去装。
+- `launcher/dsh-launch.cmd` 不再写死 DSH 路径：优先用 `CG_DSH_EXE`（安装器会填），
+  并按 `%USERPROFILE%\.dsh\dsh-runtimes\*\dependencies\node\bin\node.exe` 自动找 DSH 自带的 node ——
+  **没装 node 的机器也能体检**（之前 `where node` 找不到就直接跳过体检）。
+- npm 包里开始包含 `launcher/`，`package.json` 新增 `install-launcher` 脚本。
+- 测试：新增 `test/launcher.test.mjs`（25 项），`panel.test.mjs` 扩到 42 项。
+
+## v0.3.3 — 2026-11-09
+
+- **改名发布到 npm：`dsh-cookie431`**（`dsh-cookie-guard` 已被他人占用）。
+  改的是包名，仓库名仍是 `dsh-cookie-guard`。
+- 去掉 `bin` 字段（npm 拒绝没有 shebang 的目标脚本，会静默删掉入口）。
+- 补 `repository` / `homepage` / `bugs` / `publishConfig`。
+
 ## v0.3.2 — 2026-11-08
 
 **新增：设置里有了入口，不用再开浏览器。**

@@ -5,8 +5,12 @@ set "HERE=%~dp0"
 set "PROJ=%HERE%.."
 set "LOGDIR=%PROJ%\logs"
 set "LOG=%LOGDIR%\launcher.log"
-set "DSH_EXE=D:\Deepseek\DeepSeek Harness.exe"
-set "DSH_DIR=D:\Deepseek"
+
+rem DSH exe: the generated start-dsh.cmd passes CG_DSH_EXE; fall back to the default install spot
+if defined CG_DSH_EXE set "DSH_EXE=%CG_DSH_EXE%"
+if not defined DSH_EXE set "DSH_EXE=D:\Deepseek\DeepSeek Harness.exe"
+for %%F in ("%DSH_EXE%") do set "DSH_DIR=%%~dpF"
+if defined DSH_DIR set "DSH_DIR=%DSH_DIR:~0,-1%"
 
 rem CRITICAL: when this script is launched by DSH (or by our helper), the env carries
 rem ELECTRON_RUN_AS_NODE=1, which makes the exe start as Node and exit at once.
@@ -17,14 +21,23 @@ cd /d "%PROJ%"
 if not exist "%LOGDIR%" mkdir "%LOGDIR%" >nul 2>&1
 
 call :log "---- launcher start (user=%USERNAME% cwd=%CD%) ----"
+call :log "dsh exe: %DSH_EXE%"
 
-where node >nul 2>&1
-if errorlevel 1 (
-  call :log "node not in PATH - skip cookie check"
+rem find a node runtime: PATH first, then the one DSH ships with itself
+rem (users who installed from npm usually have no node.exe on PATH)
+set "NODE="
+where node >nul 2>&1 && set "NODE=node"
+if not defined NODE (
+  for /d %%D in ("%USERPROFILE%\.dsh\dsh-runtimes\*") do (
+    if exist "%%D\dependencies\node\bin\node.exe" set "NODE=%%D\dependencies\node\bin\node.exe"
+  )
+)
+if not defined NODE (
+  call :log "no node runtime found - skip cookie check"
   goto :launch
 )
-for /f "delims=" %%v in ('where node') do call :log "node resolved: %%v"
-node "%PROJ%\scripts\prelaunch.mjs" --threshold 1 --keep 1 >>"%LOG%" 2>&1
+call :log "node: %NODE%"
+"%NODE%" "%PROJ%\scripts\prelaunch.mjs" --threshold 1 --keep 1 >>"%LOG%" 2>&1
 set "RC=%ERRORLEVEL%"
 call :log "prelaunch rc=%RC%"
 
@@ -33,6 +46,7 @@ if not exist "%DSH_EXE%" (
   call :log "ERROR: DSH exe not found: %DSH_EXE%"
   echo.
   echo   Missing: %DSH_EXE%
+  echo   If DSH is installed elsewhere, reinstall the shortcut from the Cookie Guard panel.
   pause
   exit /b 1
 )

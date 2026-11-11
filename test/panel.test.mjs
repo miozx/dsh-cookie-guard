@@ -10,6 +10,9 @@ import { createServer } from 'node:http'
 
 const tmp = mkdtempSync(join(tmpdir(), 'cg-panel-'))
 process.env.DSH_HOME = tmp
+// 启动器相关路径也指向临时目录：测试绝不能碰真实桌面
+process.env.CG_LAUNCHER_DIR = join(tmp, 'launcher')
+process.env.CG_DESKTOP_DIR = join(tmp, 'desktop')
 
 const { createRoutes, makeHandler, BASE_PATH } = await import('../lib/routes.mjs')
 const { appendReport, reportPath } = await import('../lib/report.mjs')
@@ -24,9 +27,14 @@ function ok(name, cond, extra) {
 }
 
 const cleanCalls = []
+const installCalls = []
 const routes = createRoutes({
   base: BASE_PATH,
   clean: () => { cleanCalls.push(Date.now()); return { started: true, helperPid: 4242, simulated: false } },
+  install: (o) => {
+    installCalls.push(o)
+    return { ok: true, cmdPath: join(tmp, 'launcher', 'start-dsh.cmd'), lnkCreated: true, lnkPath: join(tmp, 'desktop', 'x.lnk') }
+  },
 })
 const handler = makeHandler(routes)
 const server = createServer((req, res) => handler(req, res))
@@ -127,6 +135,29 @@ try {
   {
     const p = reportPath()
     ok('报告路径在临时目录内', p.startsWith(tmp), p)
+  }
+
+  /* 8. 启动器：状态里有 launcher、页面有安装按钮、接口能装 */
+  {
+    const j = await (await get(BASE_PATH + '/api/status')).json()
+    ok('status 带 launcher 段', !!j.launcher, JSON.stringify(j.launcher))
+    ok('launcher.installed = false（还没装）', j.launcher.installed === false)
+    ok('launcher 路径在临时目录内', String(j.launcher.cmdPath).startsWith(tmp), j.launcher.cmdPath)
+
+    const html = await (await get(BASE_PATH + '/')).text()
+    ok('页面有「安装启动器」按钮', html.includes('安装启动器'))
+    ok('页面会读 launcher 状态', html.includes('api/install-launcher'))
+    ok('空状态文案不再硬编码桌面路径', html.includes('先点下面「安装启动器」') || html.includes('launcherReady'))
+
+    const bad = await get(BASE_PATH + '/api/install-launcher')
+    ok('GET /api/install-launcher → 405', bad.status === 405, 'status=' + bad.status)
+
+    const r = await get(BASE_PATH + '/api/install-launcher', { method: 'POST' })
+    const b = await r.json()
+    ok('POST → 200', r.status === 200, 'status=' + r.status)
+    ok('返回 ok + cmdPath', b.ok === true && !!b.cmdPath, JSON.stringify(b))
+    ok('install() 被调用', installCalls.length === 1, 'calls=' + installCalls.length)
+    hits.push('launcher')
   }
 } finally {
   await new Promise(r => server.close(r))

@@ -75,6 +75,7 @@
     background: #eef0f3; border-color: var(--line); color: #9aa1ab;
   }
   button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.ghost { background: transparent; border-style: dashed; }
   .hint { color: var(--muted); font-size: 12px; }
 
   footer { color: var(--muted); font-size: 12px; line-height: 1.8; }
@@ -125,8 +126,10 @@
     <div class="actions">
       <button class="primary" id="cleanBtn" title="关闭 DSH → 清理 cookie → 自动重启">立即清理并重启</button>
       <button id="refreshBtn">刷新数据</button>
+      <button id="installBtn" class="ghost" style="display:none" title="在桌面放一个「DSH（带体检启动）」快捷方式">安装启动器</button>
       <span class="hint" id="btnHint">会先把 DSH 关掉再清理（Cookies 被它独占着），然后自动拉起来。</span>
     </div>
+    <div class="hint" id="launcherHint" style="margin-top:10px"></div>
   </div>
 
   <footer>
@@ -158,6 +161,7 @@
     var rep = data.report || {};
     var history = Array.isArray(rep.history) ? rep.history : [];
     var last = rep.last || null;
+    launcherReady = !!(data.launcher && data.launcher.installed);
     // 大卡片只认"真的数过"的记录：被占用跳过（locked）的条目没有 before/after，
     // 不该让整块变成「? → ?」，那样信息量为零。
     function hasNum(e) { return !!e && e.before !== null && e.before !== undefined; }
@@ -173,7 +177,9 @@
       $('verdict').className = 'tag' + (last ? ' ' + statusTag(last.status).cls : '');
       $('when').textContent = last
         ? (last.local || last.ts || '') + '　（这次没拿到数字，' + statusTag(last.status).text + '）'
-        : '还没有报告 —— 用桌面上的「DSH（带体检启动）」启动一次就会有了。';
+        : (launcherReady
+          ? '还没有报告 —— 用桌面上的「DSH（带体检启动）」启动一次就会有了。'
+          : '还没有报告 —— 先点下面「安装启动器」，之后用它启动 DSH 就会有了。');
       $('rows').innerHTML = '<tr><td colspan="5" class="empty">还没有任何记录</td></tr>';
     } else {
       $('before').textContent = shown.before;
@@ -209,6 +215,50 @@
 
     $('dot').className = 'dot';
     $('conn').textContent = '数据来自本地报告文件 · 最后读取 ' + (data.generatedAtLocal || '');
+    renderLauncher(data.launcher);
+  }
+
+  // 启动器（桌面快捷方式）状态：没有它，报告永远是空的、平时启动也不会清理
+  var launcherReady = false;
+  function renderLauncher(l) {
+    var btn = $('installBtn');
+    var hint = $('launcherHint');
+    if (!btn || !hint) return;
+    if (!l) { btn.style.display = 'none'; return; }
+    launcherReady = !!l.installed;
+    if (l.installed) {
+      btn.style.display = 'none';
+      hint.innerHTML = '启动器已就位：以后用桌面上的「DSH（带体检启动）」启动，每次都会先清一次 cookie。' +
+        '<br><code>' + (l.cmdPath || '') + '</code>';
+    } else {
+      btn.style.display = '';
+      hint.innerHTML = '还没有启动器。装一个，以后双击桌面图标启动 DSH 就会自动体检（不装的话，只有点上面的按钮才会清理）。';
+    }
+  }
+
+  function installLauncher() {
+    var btn = $('installBtn');
+    var hint = $('launcherHint');
+    btn.disabled = true;
+    hint.textContent = '正在创建…';
+    fetch(BASE + '/api/install-launcher', { method: 'POST', cache: 'no-store' })
+      .then(function (r) { return r.json().then(function (j) { return { status: r.status, body: j }; }); })
+      .then(function (res) {
+        btn.disabled = false;
+        var b = res.body || {};
+        if (res.status === 200 && b.ok) {
+          launcherReady = true;
+          btn.style.display = 'none';
+          hint.innerHTML = '已创建：<code>' + (b.cmdPath || '') + '</code>' +
+            (b.lnkCreated ? '<br>桌面快捷方式：<code>' + (b.lnkPath || '') + '</code>' : '') +
+            ((b.notes && b.notes.length) ? '<br>· ' + b.notes.join('<br>· ') : '') +
+            '<br><b>下次请用桌面上的「DSH（带体检启动）」启动。</b>';
+        } else {
+          hint.textContent = '创建失败：' + (b.error || b.message || ('HTTP ' + res.status));
+        }
+        load();
+      })
+      .catch(function (err) { btn.disabled = false; hint.textContent = '创建失败：' + err; });
   }
 
   function fail(err) {
@@ -238,6 +288,7 @@
 
   $('refreshBtn').addEventListener('click', load);
   $('cleanBtn').addEventListener('click', cleanNow);
+  $('installBtn').addEventListener('click', installLauncher);
   load();
   timer = setInterval(load, 5000);
   window.addEventListener('beforeunload', function () { clearInterval(timer); });

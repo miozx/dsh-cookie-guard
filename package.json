@@ -1,68 +1,72 @@
 {
-  "name": "dsh-cookie431",
-  "version": "0.3.3",
-  "type": "module",
-  "main": "./lib/index.js",
-  "exports": {
-    ".": "./lib/index.js",
-    "./client": "./lib/client.js",
-    "./package.json": "./package.json"
-  },
-  "description": "DSH Desktop 的 dsh-auth cookie 堆积防护：启动前体检 + 超阈值清理 + 只读面板 (HTTP 431 fix)",
-  "keywords": [
-    "dsh",
-    "deepseek-harness",
-    "cookie",
-    "http-431",
-    "electron"
-  ],
-  "engines": {
-    "node": ">=22.5"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/woshixiaoshuai2333/dsh-cookie-guard.git"
-  },
-  "homepage": "https://github.com/woshixiaoshuai2333/dsh-cookie-guard#readme",
-  "bugs": {
-    "url": "https://github.com/woshixiaoshuai2333/dsh-cookie-guard/issues"
-  },
-  "dsh": {
-    "bundle": {
-      "patch": "./cordis.patch.yml"
-    },
-    "compatibility": {
-      "dshReleases": {
-        "0.2.2-rc.1": "compatible",
-        "0.2.2": "compatible",
-        "0.2.1": "compatible",
-        "0.2.1-rc.3": "compatible",
-        "0.2.0-rc.5": "compatible"
-      }
-    },
-    "client": {
-      "inject": [
-        "@deepseek-ai/dsh-client-connection"
-      ],
-      "platform": "web"
-    }
-  },
-  "files": [
-    "lib/",
-    "scripts/",
-    "cordis.patch.yml",
-    "README.md"
-  ],
-  "scripts": {
-    "test": "node test/selftest.mjs && node test/clean.test.mjs && node test/prelaunch.test.mjs && node test/panel.test.mjs && node test/client.test.mjs",
-    "check": "node lib/probe.mjs --json",
-    "clean": "node scripts/clean.mjs --dry-run",
-    "clean:force": "node scripts/clean.mjs --force",
-    "prelaunch": "node scripts/prelaunch.mjs",
-    "panel": "node scripts/panel-serve.mjs"
-  },
-  "publishConfig": {
-    "access": "public"
-  },
-  "license": "MIT"
+    "name":  "dsh-cookie431",
+    "version":  "0.3.4",
+    "type":  "module",
+    "main":  "./lib/index.js",
+    "exports":  {
+                    ".":  "./lib/index.js",
+                    "./client":  "./lib/client.js",
+                    "./package.json":  "./package.json"
+                },
+    "description":  "DSH Desktop 的 dsh-auth cookie 堆积防护：启动前体检 + 超阈值清理 + 只读面板 (HTTP 431 fix)",
+    "keywords":  [
+                     "dsh",
+                     "deepseek-harness",
+                     "cookie",
+                     "http-431",
+                     "electron"
+                 ],
+    "engines":  {
+                    "node":  "\u003e=22.5"
+                },
+    "repository":  {
+                       "type":  "git",
+                       "url":  "git+https://github.com/woshixiaoshuai2333/dsh-cookie-guard.git"
+                   },
+    "homepage":  "https://github.com/woshixiaoshuai2333/dsh-cookie-guard#readme",
+    "bugs":  {
+                 "url":  "https://github.com/woshixiaoshuai2333/dsh-cookie-guard/issues"
+             },
+    "dsh":  {
+                "bundle":  {
+                               "patch":  "./cordis.patch.yml"
+                           },
+                "compatibility":  {
+                                      "dshReleases":  {
+                                                          "0.2.2-rc.1":  "compatible",
+                                                          "0.2.2":  "compatible",
+                                                          "0.2.1":  "compatible",
+                                                          "0.2.1-rc.3":  "compatible",
+                                                          "0.2.0-rc.5":  "compatible"
+                                                      }
+                                  },
+                "client":  {
+                               "inject":  [
+                                              "@deepseek-ai/dsh-client-connection"
+                                          ],
+                               "platform":  "web"
+                           }
+            },
+    "files":  [
+                  "lib/",
+                  "scripts/",
+                  "launcher/",
+                  "!launcher/打开Cookie面板.cmd",
+                  "cordis.patch.yml",
+                  "README.md",
+                  "CHANGELOG.md"
+              ],
+    "scripts":  {
+                    "test":  "node test/selftest.mjs \u0026\u0026 node test/clean.test.mjs \u0026\u0026 node test/prelaunch.test.mjs \u0026\u0026 node test/panel.test.mjs \u0026\u0026 node test/client.test.mjs \u0026\u0026 node test/launcher.test.mjs",
+                    "check":  "node lib/probe.mjs --json",
+                    "clean":  "node scripts/clean.mjs --dry-run",
+                    "clean:force":  "node scripts/clean.mjs --force",
+                    "prelaunch":  "node scripts/prelaunch.mjs",
+                    "panel":  "node scripts/panel-serve.mjs",
+                    "install-launcher":  "node lib/launcher.mjs"
+                },
+    "publishConfig":  {
+                          "access":  "public"
+                      },
+    "license":  "MIT"
 }
