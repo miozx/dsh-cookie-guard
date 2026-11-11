@@ -1,5 +1,20 @@
 # 更新记录
 
+## v0.3.5 — 2026-11-11
+
+**修一个体验上的坑：关掉启动器窗口，DSH 也会跟着退出。**
+
+v0.3.4 的启动器用 `start "" "DSH.exe"` 拉起 DSH，而 Windows 会让子进程继承父进程的控制台。
+因此那个黑窗口一旦被叉掉，系统会向控制台里所有进程发 `CTRL_CLOSE_EVENT`，DSH 连带被杀。
+（面板上「立即清理并重启」没有这个问题，因为 `helper.mjs` 用的是 `spawn(..., { detached: true })`。）
+
+- 新增 `scripts/spawn-dsh.mjs`：用 Node 的 `spawn(exe, [], { detached: true, stdio: 'ignore' })` 启动，
+  DSH 不再附着到启动器控制台；启动后等 2.5 秒确认存活即退出，窗口自行关闭。
+- `launcher/dsh-launch.cmd`：优先走 `spawn-dsh.mjs`；**找不到 node 时退回原来的 `start ""`**（宁可回到旧行为，也不能不启动）。
+- 去掉 `tasklist` 死等 12 秒的循环 —— 等待现在发生在 spawn-dsh 里，且窗口会自己关掉，不需要用户去叉。
+- 启动器仍会清掉 `ELECTRON_RUN_AS_NODE`，避免 DSH 以 Node 模式启动后 40ms 退出。
+- 测试：`test/launcher.test.mjs` 增至 34 项（新增「必须 detached」「必须保留退路」「不再死等 12 秒」等断言）。
+
 ## v0.3.4 — 2026-11-11
 
 **修一个真问题：从 npm / 插件页装进来的人，防护其实是关着的。**

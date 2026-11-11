@@ -51,37 +51,22 @@ if not exist "%DSH_EXE%" (
   exit /b 1
 )
 
-call :log "starting DSH"
+call :log "starting DSH (detached)"
+rem Use node's detached spawn so DSH does NOT inherit this console.
+rem With plain `start`, closing this window sends CTRL_CLOSE to DSH and kills it.
+if not defined NODE goto :plainstart
+"%NODE%" "%PROJ%\scripts\spawn-dsh.mjs" --exe "%DSH_EXE%" --wait 2500 >>"%LOG%" 2>&1
+set "RC=%ERRORLEVEL%"
+call :log "spawn rc=%RC%"
+if "%RC%"=="0" goto :ok
+call :log "spawn failed - falling back to plain start (window will stay attached)"
+
+:plainstart
 start "" /D "%DSH_DIR%" "%DSH_EXE%"
 
-rem wait up to 12s and verify a process actually showed up
-set /a N=0
-:wait
-timeout /t 1 /nobreak >nul 2>&1
-tasklist /FI "IMAGENAME eq DeepSeek Harness.exe" /NH 2>nul | find /I "DeepSeek Harness.exe" >nul && goto :started
-set /a N+=1
-if %N% GEQ 12 goto :failed
-goto :wait
-
-:started
-call :log "DSH process detected after %N%s - ok"
+:ok
+call :log "launcher done - this window can close now"
 exit /b 0
-
-:failed
-call :log "ERROR: no DSH process after 12s, retry once without /D"
-start "" "%DSH_EXE%"
-timeout /t 10 /nobreak >nul 2>&1
-tasklist /FI "IMAGENAME eq DeepSeek Harness.exe" /NH 2>nul | find /I "DeepSeek Harness.exe" >nul && (
-  call :log "retry ok"
-  exit /b 0
-)
-call :log "ERROR: retry also failed - see log"
-echo.
-echo   DSH did not start. Log:
-echo   %LOG%
-echo.
-pause
-exit /b 1
 
 :log
 >>"%LOG%" echo [%DATE% %TIME%] %~1

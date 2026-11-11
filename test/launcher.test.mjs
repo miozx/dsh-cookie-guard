@@ -84,6 +84,21 @@ try {
     const r = installLauncher({ dryRun: true })
     ok('不带参数也能给出内容', r.ok === true && r.content.includes('dsh-launch.cmd'))
   }
+  /* 7. 启动方式必须脱离控制台（否则关窗口会连 DSH 一起杀掉） */
+  {
+    const spawnSrc = readFileSync(new URL('../scripts/spawn-dsh.mjs', import.meta.url), 'utf8')
+    ok('spawn-dsh 用 detached: true', spawnSrc.includes('detached: true'))
+    ok('spawn-dsh 忽略 stdio', spawnSrc.includes("stdio: 'ignore'"))
+    ok('spawn-dsh 清掉 ELECTRON_RUN_AS_NODE', spawnSrc.includes('delete env.ELECTRON_RUN_AS_NODE'))
+    ok('spawn-dsh 先检查 exe 存在', spawnSrc.includes('existsSync(exe)'))
+
+    const cmdSrc = readFileSync(new URL('../launcher/dsh-launch.cmd', import.meta.url), 'utf8')
+    ok('启动器优先走 spawn-dsh', cmdSrc.includes('scripts\\spawn-dsh.mjs'))
+    ok('启动器保留退路 start "" /D', cmdSrc.includes('start "" /D "%DSH_DIR%"'))
+    ok('启动器不再用 tasklist 死等 12 秒', !cmdSrc.includes('GEQ 12'))
+    ok('启动器纯 ASCII', [...cmdSrc].every((ch) => ch.charCodeAt(0) < 128))
+    ok('启动器只有 CRLF', !/[^\r]\n/.test(cmdSrc))
+  }
 } finally {
   rmSync(tmp, { recursive: true, force: true })
 }
