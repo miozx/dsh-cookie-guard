@@ -69,6 +69,8 @@ try {
     ok('history 为空数组', Array.isArray(j.report.history) && j.report.history.length === 0)
     ok('不再暴露 backups 字段', j.backups === undefined, JSON.stringify(j.backups))
     ok('报告路径用的是临时目录', String(j.report.path).startsWith(tmp), j.report.path)
+    // 面板以前把版本写死成 "v0.2.0"，早和实际脱节。现在由 API 给出真版本。
+    ok('status 带真实版本号', typeof j.version === 'string' && /^\d+\.\d+\.\d+/.test(j.version), String(j.version))
     hits.push('empty')
   }
 
