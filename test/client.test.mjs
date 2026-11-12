@@ -342,14 +342,33 @@ console.log('client.test.mjs')
   check('the status request is issued on mount', state.fetched.length > 0, 'no fetch was made')
 }
 
-/* 29-30: no window-opening affordance at all in this commit */
+/* 29-31: the "open in browser" control must go through the server */
 {
-  // window.open and <a target="_blank"> are both silently denied here (see the
-  // file header), so the panel must not pretend to offer one.
+  // window.open / <a target="_blank"> are both silently denied here: the panel
+  // is served from the shell's own port, and allowedNavigation() rejects
+  // isApplicationHost URLs (same port + 127.0.0.1). The button must therefore
+  // POST to /api/open-panel and let the Node half run the system browser.
   const { state } = runClient({ apply: true, loaded: true })
   const nodes = flatten(state.rendered)
-  check('no anchor is rendered', nodes.every((n) => n.tag !== 'a'), 'found an anchor')
-  check('no "新窗口" affordance exists', !textOf(state.rendered).includes('新窗口'), '')
+  const btn = nodes.find((n) => n.tag === 'button' && textOf(n).includes('在浏览器打开'))
+  check('the open-in-browser button exists', !!btn, 'button not found')
+  check('it is not an anchor (anchors are denied)', nodes.every((n) => n.tag !== 'a'), 'found an anchor')
+  check('it does not say "新窗口"', !textOf(state.rendered).includes('新窗口'), '')
+  if (btn && typeof btn.props.onClick === 'function') {
+    // Drive the handler and confirm it hits the server route rather than window.open.
+    const before = state.fetched.length
+    btn.props.onClick()
+    // The handler awaits fetch; give the microtask queue a turn.
+    await Promise.resolve()
+    await Promise.resolve()
+    check(
+      'clicking it POSTs to /api/open-panel',
+      state.fetched.slice(before).some((u) => u.includes('/cookie-guard/api/open-panel')),
+      state.fetched.slice(before).join(',')
+    )
+  } else {
+    check('clicking it POSTs to /api/open-panel', false, 'no onClick')
+  }
 }
 
 /* 31-35: never break the host */
