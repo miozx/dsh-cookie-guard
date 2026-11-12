@@ -5,16 +5,59 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>DSH Cookie Guard</title>
 <style>
+  /* 配色对齐 DSH 原生 ui-theme 的 alias token，深浅跟随系统。
+     面板是独立文档，宿主的 --dsw-* 变量进不来，所以只能按同一套取值自带一份。
+       浅色 / 深色
+       bg      bg-base           #fff      #151517
+       card    bg-layer-1        #fff      #232324
+       line    border-l2         #0000001a #ffffff1f
+       text    label-primary     #0f1115   #f9fafb
+       muted   label-tertiary    #81858c   #adb2b8
+       accent  state-business    #4176e6   #7aaaff
+       ok/warn/bad               state-success/warn/error-primary
+     主按钮的字用 label-primary-foreground：深色强调色是浅蓝，白字只有 2.3:1。 */
   :root {
-    --bg: #f6f7f9;
-    --card: #ffffff;
-    --line: #e6e8ec;
-    --text: #1f2328;
-    --muted: #6b7280;
-    --ok: #16a34a;
-    --warn: #d97706;
-    --bad: #dc2626;
-    --accent: #2563eb;
+    --bg: #fff;
+    --card: #fff;
+    --line: #0000001a;
+    --text: #0f1115;
+    --muted: #81858c;
+    --ok: #22c55e;
+    --warn: #f59e0b;
+    --bad: #ec1313;
+    --accent: #4176e6;
+    --btn-bg: #fff;
+    --btn-primary-fg: #fff;
+    --chip-bg: #f5f6f7;
+    --chip-fg: #81858c;
+    --tag-info-bg: #e4edfd;
+    --tag-ok-bg: #e6faed;
+    --tag-warn-bg: #fef5e7;
+    --tag-bad-bg: color-mix(in srgb, var(--bad) 10%, transparent);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      color-scheme: dark;
+      --bg: #151517;
+      --card: #232324;
+      --line: #ffffff1f;
+      --text: #f9fafb;
+      --muted: #adb2b8;
+      --ok: #22c55e;
+      --warn: #f59e0b;
+      --bad: #f25a5a;
+      --accent: #7aaaff;
+      --btn-bg: #43454a;
+      /* The dark accent is a LIGHT blue, so white text on it only reaches
+         2.3:1. This is DSH's own label-primary-foreground for that case. */
+      --btn-primary-fg: #0f1115;
+      --chip-bg: #ffffff14;
+      --chip-fg: #cfd3d6;
+      --tag-info-bg: #34415b;
+      --tag-ok-bg: #233c2c;
+      --tag-warn-bg: #27241f;
+      --tag-bad-bg: color-mix(in srgb, var(--bad) 22%, transparent);
+    }
   }
   * { box-sizing: border-box; }
   body {
@@ -39,11 +82,11 @@
   .arrow { color: var(--muted); font-size: 26px; }
   .tag {
     font-size: 12px; padding: 3px 9px; border-radius: 999px;
-    background: #eef2ff; color: var(--accent); font-weight: 600;
+    background: var(--tag-info-bg); color: var(--accent); font-weight: 600;
   }
-  .tag.ok { background: #ecfdf5; color: var(--ok); }
-  .tag.warn { background: #fffbeb; color: var(--warn); }
-  .tag.bad { background: #fef2f2; color: var(--bad); }
+  .tag.ok { background: var(--tag-ok-bg); color: var(--ok); }
+  .tag.warn { background: var(--tag-warn-bg); color: var(--warn); }
+  .tag.bad { background: var(--tag-bad-bg); color: var(--bad); }
   .hero .when { color: var(--muted); font-size: 13px; margin-top: 12px; }
 
   .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
@@ -68,18 +111,18 @@
   .actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
   button {
     font: inherit; padding: 9px 16px; border-radius: 9px; cursor: pointer;
-    border: 1px solid var(--line); background: #fff; color: var(--text);
+    border: 1px solid var(--line); background: var(--btn-bg); color: var(--text);
   }
   button:disabled { cursor: not-allowed; opacity: 1; }
   button:disabled, button.primary:disabled {
-    background: #eef0f3; border-color: var(--line); color: #9aa1ab;
+    background: var(--chip-bg); border-color: var(--line); color: var(--chip-fg);
   }
-  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: var(--btn-primary-fg); }
   button.ghost { background: transparent; border-style: dashed; }
   .hint { color: var(--muted); font-size: 12px; }
 
   footer { color: var(--muted); font-size: 12px; line-height: 1.8; }
-  code { background: #eef0f3; padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+  code { background: var(--chip-bg); padding: 1px 5px; border-radius: 4px; font-size: 12px; }
   .dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; background: var(--ok); margin-right: 6px; }
   .dot.off { background: var(--muted); }
 </style>
@@ -88,7 +131,7 @@
 <div class="wrap">
   <header>
     <h1>DSH Cookie Guard</h1>
-    <span class="ver" id="ver">v0.2.0 · 第 1、2 步</span>
+    <span class="ver" id="ver"></span>
   </header>
   <div class="sub">只看不改。所有数字都来自启动前体检写下的报告，不是估算。</div>
 
@@ -169,6 +212,9 @@
     var skipped = (last && !hasNum(last)) ? last : null;
 
     $('reportPath').textContent = rep.path || '—';
+    // 版本号从接口拿（真版本），不要写死 —— 以前这里是 "v0.2.0 · 第 1、2 步"，
+    // 早就和实际版本脱节了。拿不到就留空，不显示假版本。
+    if (data.version) $('ver').textContent = 'v' + data.version;
 
     if (!shown) {
       $('before').textContent = '—';
